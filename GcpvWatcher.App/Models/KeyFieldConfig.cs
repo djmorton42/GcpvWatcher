@@ -1,3 +1,3 @@
 namespace GcpvWatcher.App.Models;
 
-public record KeyFieldConfig(string Key, int Offset);
+public record KeyFieldConfig(string Key, int Offset, string[]? SuffixStopWords = null);

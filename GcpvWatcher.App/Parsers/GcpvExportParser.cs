@@ -146,6 +146,38 @@ public class GcpvExportParser
             throw new ArgumentException($"Target column index {targetIndex} is out of bounds for field '{fieldName}'. Row has {columns.Count} columns.");
         }
 
-        return columns[targetIndex].Trim();
+        var value = columns[targetIndex].Trim();
+        
+        // Apply suffix stop words if configured
+        if (keyField.SuffixStopWords != null && keyField.SuffixStopWords.Length > 0)
+        {
+            value = RemoveSuffixStopWords(value, keyField.SuffixStopWords);
+        }
+
+        return value;
+    }
+
+    private string RemoveSuffixStopWords(string value, string[] suffixStopWords)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return value;
+
+        // Sort stop words by length in descending order
+        var sortedStopWords = suffixStopWords
+            .Where(word => !string.IsNullOrWhiteSpace(word))
+            .OrderByDescending(word => word.Length)
+            .ToArray();
+
+        foreach (var stopWord in sortedStopWords)
+        {
+            if (value.EndsWith(stopWord, StringComparison.Ordinal))
+            {
+                // Remove the stop word from the end
+                value = value.Substring(0, value.Length - stopWord.Length).Trim();
+                break; // Only remove the first (longest) match
+            }
+        }
+
+        return value;
     }
 }
