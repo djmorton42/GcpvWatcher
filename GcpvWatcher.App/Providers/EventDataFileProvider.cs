@@ -2,17 +2,17 @@ using System.IO;
 
 namespace GcpvWatcher.App.Providers;
 
-public class PeopleDataFileProvider : BaseDataProvider
+public class EventDataFileProvider : BaseEventDataProvider
 {
     private readonly string _filePath;
 
-    public PeopleDataFileProvider(string filePath)
+    public EventDataFileProvider(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
 
-        if (!filePath.EndsWith(".ppl", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("File must have a .ppl extension.", nameof(filePath));
+        if (!filePath.EndsWith(".evt", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("File must have a .evt extension.", nameof(filePath));
 
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"The file '{filePath}' was not found.");

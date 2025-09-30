@@ -1,6 +1,6 @@
 namespace GcpvWatcher.App.Providers;
 
-public abstract class BaseDataProvider : IPeopleDataProvider
+public abstract class BaseEventDataProvider : IEventDataProvider
 {
     public abstract Task<IEnumerable<string>> GetDataRowsAsync();
 
