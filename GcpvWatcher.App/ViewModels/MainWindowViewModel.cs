@@ -1,39 +1,137 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Avalonia.Platform.Storage;
+using Avalonia.Controls;
 using GcpvWatcher.App.Services;
 
 namespace GcpvWatcher.App.ViewModels;
 
 public class MainWindowViewModel : INotifyPropertyChanged
 {
-    private readonly CalculatorService _calculatorService;
-    private string _result = "0";
+    private string _watchDirectory = "";
+    private string _finishLynxDirectory = "";
+    private string _status = "Not Watching";
+    private bool _isWatching = false;
+    private Window? _window;
 
     public MainWindowViewModel()
     {
-        _calculatorService = new CalculatorService();
-        CalculateCommand = new RelayCommand(Calculate);
+        BrowseWatchDirectoryCommand = new RelayCommand(BrowseWatchDirectory);
+        BrowseFinishLynxDirectoryCommand = new RelayCommand(BrowseFinishLynxDirectory);
+        StartWatchingCommand = new RelayCommand(StartWatching, () => CanStartWatching);
+        StopWatchingCommand = new RelayCommand(StopWatching, () => CanStopWatching);
         CloseCommand = new RelayCommand(Close);
     }
 
-    public string Result
+    public void SetWindow(Window window)
     {
-        get => _result;
+        _window = window;
+    }
+
+    public string WatchDirectory
+    {
+        get => _watchDirectory;
         set
         {
-            _result = value;
+            _watchDirectory = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(CanStartWatching));
+            OnPropertyChanged(nameof(CanStopWatching));
+            ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
         }
     }
 
-    public ICommand CalculateCommand { get; }
+    public string FinishLynxDirectory
+    {
+        get => _finishLynxDirectory;
+        set
+        {
+            _finishLynxDirectory = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanStartWatching));
+            OnPropertyChanged(nameof(CanStopWatching));
+            ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+        }
+    }
+
+    public string Status
+    {
+        get => _status;
+        set
+        {
+            _status = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(StatusColor));
+        }
+    }
+
+    public string StatusColor => _isWatching ? "Green" : "Red";
+
+    public bool CanStartWatching => !_isWatching && !string.IsNullOrEmpty(_watchDirectory) && !string.IsNullOrEmpty(_finishLynxDirectory);
+
+    public bool CanStopWatching => _isWatching;
+
+    public ICommand BrowseWatchDirectoryCommand { get; }
+    public ICommand BrowseFinishLynxDirectoryCommand { get; }
+    public ICommand StartWatchingCommand { get; }
+    public ICommand StopWatchingCommand { get; }
     public ICommand CloseCommand { get; }
 
-    private void Calculate()
+    private async void BrowseWatchDirectory()
     {
-        var result = _calculatorService.Add(4, 2);
-        Result = result.ToString();
+        if (_window == null) return;
+
+        var options = new FolderPickerOpenOptions
+        {
+            AllowMultiple = false,
+            Title = "Select Watch Directory"
+        };
+
+        var result = await _window.StorageProvider.OpenFolderPickerAsync(options);
+        if (result.Count > 0)
+        {
+            WatchDirectory = result[0].Path.LocalPath;
+        }
+    }
+
+    private async void BrowseFinishLynxDirectory()
+    {
+        if (_window == null) return;
+
+        var options = new FolderPickerOpenOptions
+        {
+            AllowMultiple = false,
+            Title = "Select FinishLynx Event Directory"
+        };
+
+        var result = await _window.StorageProvider.OpenFolderPickerAsync(options);
+        if (result.Count > 0)
+        {
+            FinishLynxDirectory = result[0].Path.LocalPath;
+        }
+    }
+
+    private void StartWatching()
+    {
+        _isWatching = true;
+        Status = "Watching";
+        OnPropertyChanged(nameof(CanStartWatching));
+        OnPropertyChanged(nameof(CanStopWatching));
+        ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+    }
+
+    private void StopWatching()
+    {
+        _isWatching = false;
+        Status = "Not Watching";
+        OnPropertyChanged(nameof(CanStartWatching));
+        OnPropertyChanged(nameof(CanStopWatching));
+        ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
     }
 
     private void Close()
@@ -70,5 +168,10 @@ public class RelayCommand : ICommand
     public void Execute(object? parameter)
     {
         _execute();
+    }
+
+    public void RaiseCanExecuteChanged()
+    {
+        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }

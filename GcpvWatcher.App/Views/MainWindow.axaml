@@ -3,8 +3,8 @@
         xmlns:vm="using:GcpvWatcher.App.ViewModels"
         x:Class="GcpvWatcher.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="GcpvWatcher Calculator"
-        Width="400" Height="300"
+        Title="GcpvWatcher Directory Monitor"
+        Width="500" Height="400"
         WindowStartupLocation="CenterScreen">
 
     <Grid Margin="20">
@@ -12,37 +12,111 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" 
-                   Text="Calculator" 
+                   Text="Directory Watcher" 
                    FontSize="24" 
                    FontWeight="Bold" 
                    HorizontalAlignment="Center" 
-                   Margin="0,0,0,20" />
+                   Margin="0,0,0,30" />
 
-        <TextBox Grid.Row="1" 
-                 Text="{Binding Result}" 
-                 IsReadOnly="True" 
-                 IsTabStop="False"
-                 Focusable="False"
-                 FontSize="16" 
-                 HorizontalAlignment="Center" 
-                 Width="200" 
-                 Margin="0,0,0,20" />
+        <!-- Watch Directory Section -->
+        <TextBlock Grid.Row="1" 
+                   Text="Watch Directory:" 
+                   FontSize="14" 
+                   FontWeight="SemiBold" 
+                   Margin="0,0,0,5" />
+        
+        <Grid Grid.Row="2" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            
+            <TextBox Grid.Column="0" 
+                     Text="{Binding WatchDirectory}" 
+                     IsReadOnly="True" 
+                     FontSize="12" 
+                     Margin="0,0,10,0" />
+            
+            <Button Grid.Column="1" 
+                    Content="Browse..." 
+                    Command="{Binding BrowseWatchDirectoryCommand}" 
+                    Width="80" 
+                    Height="30" />
+        </Grid>
 
-        <StackPanel Grid.Row="2" 
+        <!-- FinishLynx Event Directory Section -->
+        <TextBlock Grid.Row="3" 
+                   Text="FinishLynx Event Directory:" 
+                   FontSize="14" 
+                   FontWeight="SemiBold" 
+                   Margin="0,0,0,5" />
+        
+        <Grid Grid.Row="4" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            
+            <TextBox Grid.Column="0" 
+                     Text="{Binding FinishLynxDirectory}" 
+                     IsReadOnly="True" 
+                     FontSize="12" 
+                     Margin="0,0,10,0" />
+            
+            <Button Grid.Column="1" 
+                    Content="Browse..." 
+                    Command="{Binding BrowseFinishLynxDirectoryCommand}" 
+                    Width="80" 
+                    Height="30" />
+        </Grid>
+
+        <!-- Status Section -->
+        <Grid Grid.Row="5" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock Grid.Column="0" 
+                       Text="Status:" 
+                       FontSize="14" 
+                       FontWeight="SemiBold" 
+                       VerticalAlignment="Center" 
+                       Margin="0,0,10,0" />
+            
+            <TextBlock Grid.Column="1" 
+                       Text="{Binding Status}" 
+                       FontSize="14" 
+                       FontWeight="Bold" 
+                       VerticalAlignment="Center" 
+                       Foreground="{Binding StatusColor}" />
+        </Grid>
+
+        <!-- Control Buttons -->
+        <StackPanel Grid.Row="6" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
-                    Spacing="10">
-            <Button Content="Calculate" 
-                    Command="{Binding CalculateCommand}" 
-                    Width="100" 
+                    Spacing="15">
+            <Button Content="Start Watching" 
+                    Command="{Binding StartWatchingCommand}" 
+                    IsEnabled="{Binding CanStartWatching}"
+                    Width="120" 
+                    Height="35" />
+            <Button Content="Stop Watching" 
+                    Command="{Binding StopWatchingCommand}" 
+                    IsEnabled="{Binding CanStopWatching}"
+                    Width="120" 
                     Height="35" />
             <Button Content="Close" 
                     Command="{Binding CloseCommand}" 
-                    Width="100" 
+                    Width="80" 
                     Height="35" />
         </StackPanel>
     </Grid>
