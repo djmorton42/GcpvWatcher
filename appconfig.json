@@ -1,0 +1,33 @@
+{
+  "GcpvExportFilePattern": "Race*.csv",
+  "KeyFields": {
+    "track_params": {
+      "key": "Event :",
+      "offset": 1
+    },
+    "race_group": {
+      "key": "Event :",
+      "offset": 2
+    },
+    "stage": {
+      "key": "Stage :",
+      "offset": 1
+    },
+    "race_number": {
+      "key": "Race",
+      "offset": 1
+    },
+    "lane": {
+      "key": "Lane",
+      "offset": 3
+    },
+    "racer": {
+      "key": "Skaters",
+      "offset": 3
+    },
+    "affiliation": {
+      "key": "Club",
+      "offset": 3
+    }
+  }
+}
