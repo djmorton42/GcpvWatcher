@@ -22,29 +22,17 @@ public class PplParser
 
         foreach (var row in dataRows)
         {
-            try
-            {
-                var racer = ParseRacerFromRow(row);
-                if (racer != null)
-                {
-                    racers.Add(racer);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log the error but continue processing other rows
-                // In a real application, you might want to use a proper logging framework
-                Console.WriteLine($"Error parsing row '{row}': {ex.Message}");
-            }
+            var racer = ParseRacerFromRow(row);
+            racers.Add(racer);
         }
 
         return racers;
     }
 
-    private Racer? ParseRacerFromRow(string row)
+    private Racer ParseRacerFromRow(string row)
     {
         if (string.IsNullOrWhiteSpace(row))
-            return null;
+            throw new ArgumentException("Row cannot be null or empty.");
 
         // Use CsvHelper to parse the row
         using var reader = new StringReader(row);
@@ -82,7 +70,7 @@ public class PplParser
         }
         catch (Exception ex) when (ex is not ArgumentException)
         {
-            throw new ArgumentException($"Error parsing CSV row: {ex.Message}. Row: {row}", ex);
+            throw new ArgumentException($"Error parsing PPL file row: {ex.Message}. Row: {row}", ex);
         }
     }
 }

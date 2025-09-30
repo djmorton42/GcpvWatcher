@@ -199,7 +199,7 @@ public class PplParserTests
     }
 
     [Fact]
-    public async Task ParseAsync_WithInvalidRowFormat_ContinuesProcessing()
+    public async Task ParseAsync_WithInvalidRowFormat_ThrowsException()
     {
         // Arrange
         var testData = new[]
@@ -211,18 +211,12 @@ public class PplParserTests
         var provider = new PeopleDataStaticProvider(testData);
         var parser = new PplParser(provider);
 
-        // Act
-        var result = await parser.ParseAsync();
-        var racers = result.ToList();
-
-        // Assert
-        Assert.Equal(2, racers.Count);
-        Assert.Equal("Smith", racers[0].LastName);
-        Assert.Equal("Johnson", racers[1].LastName);
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => parser.ParseAsync());
     }
 
     [Fact]
-    public async Task ParseAsync_WithInvalidRacerId_ContinuesProcessing()
+    public async Task ParseAsync_WithInvalidRacerId_ThrowsException()
     {
         // Arrange
         var testData = new[]
@@ -234,14 +228,8 @@ public class PplParserTests
         var provider = new PeopleDataStaticProvider(testData);
         var parser = new PplParser(provider);
 
-        // Act
-        var result = await parser.ParseAsync();
-        var racers = result.ToList();
-
-        // Assert
-        Assert.Equal(2, racers.Count);
-        Assert.Equal("Smith", racers[0].LastName);
-        Assert.Equal("Brown", racers[1].LastName);
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => parser.ParseAsync());
     }
 
     [Fact]
@@ -528,12 +516,8 @@ public class PplParserTests
         var provider = new PeopleDataStaticProvider(testData);
         var parser = new PplParser(provider);
 
-        // Act
-        var result = await parser.ParseAsync();
-        var racers = result.ToList();
-
-        // Assert - should have 0 racers because all rows have invalid racer IDs
-        Assert.Empty(racers);
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => parser.ParseAsync());
     }
 
     [Fact]
@@ -688,6 +672,59 @@ public class PplParserTests
         Assert.Equal("Davis", racers[3].LastName);
         Assert.Equal("Alice", racers[3].FirstName);
         Assert.Equal("Hamilton", racers[3].Affiliation);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithEmptyRow_ReturnsEmptyResult()
+    {
+        // Arrange
+        var testData = new[] { "" };
+        var provider = new PeopleDataStaticProvider(testData);
+        var parser = new PplParser(provider);
+
+        // Act
+        var result = await parser.ParseAsync();
+        var racers = result.ToList();
+
+        // Assert - Empty rows are filtered out by the provider, so no racers should be returned
+        Assert.Empty(racers);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithWhitespaceOnlyRow_ReturnsEmptyResult()
+    {
+        // Arrange
+        var testData = new[] { "   " };
+        var provider = new PeopleDataStaticProvider(testData);
+        var parser = new PplParser(provider);
+
+        // Act
+        var result = await parser.ParseAsync();
+        var racers = result.ToList();
+
+        // Assert - Whitespace-only rows are filtered out by the provider, so no racers should be returned
+        Assert.Empty(racers);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithValidData_DoesNotThrow()
+    {
+        // Arrange
+        var testData = new[]
+        {
+            "100,Smith,John,Toronto",
+            "101,Johnson,Jane,Montreal"
+        };
+        var provider = new PeopleDataStaticProvider(testData);
+        var parser = new PplParser(provider);
+
+        // Act & Assert
+        var result = await parser.ParseAsync();
+        var racers = result.ToList();
+
+        Assert.Equal(2, racers.Count);
+        Assert.Equal("Smith", racers[0].LastName);
+        Assert.Equal("Johnson", racers[1].LastName);
     }
 
     [Fact]
