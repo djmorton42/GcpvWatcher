@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using GcpvWatcher.App.Services;
 using GcpvWatcher.App.Models;
 using System.IO;
+using System.Collections.ObjectModel;
 
 namespace GcpvWatcher.App.ViewModels;
 
@@ -21,6 +22,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private FileWatcherService? _fileWatcherService;
     private AppConfig? _appConfig;
     private UserPreferences _userPreferences = new();
+    private readonly ObservableCollection<Race> _races = new();
 
     public MainWindowViewModel()
     {
@@ -111,6 +113,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public bool CanBrowseFinishLynxDirectory => !_isWatching;
 
+    public ObservableCollection<Race> Races => _races;
+
     public ICommand BrowseWatchDirectoryCommand { get; }
     public ICommand BrowseFinishLynxDirectoryCommand { get; }
     public ICommand StartWatchingCommand { get; }
@@ -185,6 +189,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             _fileWatcherService = new FileWatcherService(_appConfig, _watchDirectory, _finishLynxDirectory);
             _fileWatcherService.FileProcessed += OnFileProcessed;
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
+            _fileWatcherService.RacesUpdated += OnRacesUpdated;
 
             _fileWatcherService.StartWatching();
             
@@ -310,6 +315,24 @@ public class MainWindowViewModel : INotifyPropertyChanged
         WatcherLogger.Log(errorMessage);
     }
 
+    private void OnRacesUpdated(object? sender, EventArgs e)
+    {
+        if (_fileWatcherService != null)
+        {
+            var allRaces = _fileWatcherService.GetAllRaces().ToList();
+            
+            // Update the races collection on the UI thread
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _races.Clear();
+                foreach (var race in allRaces)
+                {
+                    _races.Add(race);
+                }
+            });
+        }
+    }
+
     private void RestartWatching()
     {
         try
@@ -327,6 +350,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 _fileWatcherService = new FileWatcherService(_appConfig, _watchDirectory, _finishLynxDirectory);
                 _fileWatcherService.FileProcessed += OnFileProcessed;
                 _fileWatcherService.ErrorOccurred += OnErrorOccurred;
+                _fileWatcherService.RacesUpdated += OnRacesUpdated;
                 _fileWatcherService.StartWatching();
                 
                 ApplicationLogger.Log($"Now watching directory: {_watchDirectory}");

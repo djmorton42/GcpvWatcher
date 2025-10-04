@@ -1,14 +1,20 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GcpvWatcher.App.ViewModels"
+        xmlns:converters="using:GcpvWatcher.App.Converters"
         x:Class="GcpvWatcher.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="GcpvWatcher Directory Monitor"
         Width="500" Height="400"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <converters:RacersToStringConverter x:Key="RacersToStringConverter" />
+    </Window.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -103,7 +109,8 @@
         <StackPanel Grid.Row="6" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
-                    Spacing="15">
+                    Spacing="15"
+                    Margin="0,0,0,20">
             <Button Content="Start Watching" 
                     Command="{Binding StartWatchingCommand}" 
                     IsEnabled="{Binding CanStartWatching}"
@@ -119,6 +126,57 @@
                     Width="80" 
                     Height="35" />
         </StackPanel>
+
+        <!-- Races List -->
+        <TextBlock Grid.Row="7" 
+                   Text="Races:" 
+                   FontSize="14" 
+                   FontWeight="SemiBold" 
+                   Margin="0,0,0,5" />
+        
+        <ScrollViewer Grid.Row="8" 
+                      VerticalScrollBarVisibility="Auto" 
+                      HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Races}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="LightGray" 
+                                BorderBrush="DarkGray" 
+                                BorderThickness="1" 
+                                CornerRadius="3" 
+                                Margin="0,2" 
+                                Padding="8">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Race " 
+                                               FontWeight="Bold" 
+                                               FontSize="12" />
+                                    <TextBlock Text="{Binding RaceNumber}" 
+                                               FontWeight="Bold" 
+                                               FontSize="12" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding RaceTitle}" 
+                                           FontSize="11" 
+                                           Margin="0,2,0,0" />
+                                <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                    <TextBlock Text="{Binding NumberOfLaps}" 
+                                               FontSize="10" 
+                                               Foreground="DarkBlue" />
+                                    <TextBlock Text=" laps" 
+                                               FontSize="10" 
+                                               Foreground="DarkBlue" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding Racers, Converter={StaticResource RacersToStringConverter}}" 
+                                           FontSize="9" 
+                                           Foreground="DarkGreen" 
+                                           Margin="0,1,0,0" 
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
     </Grid>
 </Window>
 

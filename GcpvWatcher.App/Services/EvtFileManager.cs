@@ -17,6 +17,9 @@ public class EvtFileManager : IDisposable
     private readonly object _lockObject = new object();
     private bool _disposed = false;
     private string _lastFinishLynxDirectory; // Track directory changes
+    private bool _hasLoadedExistingRaces = false; // Track if we've already loaded existing races
+
+    public event EventHandler? RacesUpdated;
 
     public EvtFileManager(string finishLynxDirectory)
     {
@@ -28,6 +31,42 @@ public class EvtFileManager : IDisposable
         // Don't load existing races on startup to avoid duplicates
         // Races will be loaded from EVT file when needed for comparison
         ApplicationLogger.Log("EvtFileManager initialized - will load existing races when needed");
+    }
+
+    public IEnumerable<Race> GetAllRaces()
+    {
+        lock (_lockObject)
+        {
+            // Get races from CSV files
+            var csvRaces = _fileRaces
+                .Where(kvp => kvp.Key != "evt_file_races")
+                .SelectMany(kvp => kvp.Value)
+                .ToList();
+            
+            // Get races from EVT file (if loaded)
+            var evtRaces = _fileRaces.ContainsKey("evt_file_races") 
+                ? _fileRaces["evt_file_races"] 
+                : new List<Race>();
+            
+            // Merge races, with CSV races taking precedence over EVT races
+            var allRaces = new Dictionary<string, Race>();
+            
+            // Add EVT races first
+            foreach (var race in evtRaces)
+            {
+                allRaces[race.RaceNumber] = race;
+            }
+            
+            // Add CSV races (this will overwrite any matching EVT races)
+            foreach (var race in csvRaces)
+            {
+                allRaces[race.RaceNumber] = race;
+            }
+            
+            return allRaces.Values
+                .OrderBy(race => race, new RaceNumberComparer())
+                .ToList();
+        }
     }
 
     public async Task<RaceProcessingStats> UpdateRacesFromFileAsync(string sourceFilePath, IEnumerable<Race> races)
@@ -46,22 +85,26 @@ public class EvtFileManager : IDisposable
                 ApplicationLogger.Log("FinishLynx directory changed - clearing all race state");
                 _fileRaces.Clear();
                 _lastFinishLynxDirectory = _finishLynxDirectory;
+                _hasLoadedExistingRaces = false; // Reset the flag when directory changes
             }
             
-            // Load existing races from EVT file if we don't have any in memory yet
-            if (_fileRaces.Count == 0)
+            // Load existing races from EVT file only once, not for every file processed
+            if (!_hasLoadedExistingRaces)
             {
                 LoadExistingRacesFromEvtFile();
+                _hasLoadedExistingRaces = true;
             }
             
-            // Get all existing races from all source files for comparison
-            var allExistingRaces = _fileRaces.Values.SelectMany(races => races).ToList();
+            // Get existing races from EVT file for comparison
+            var evtRaces = _fileRaces.ContainsKey("evt_file_races") 
+                ? _fileRaces["evt_file_races"] 
+                : new List<Race>();
             
-            // Handle duplicate race numbers by keeping the last occurrence
+            // Create dictionary of EVT races for comparison
             var existingRacesDict = new Dictionary<string, Race>();
-            foreach (var race in allExistingRaces)
+            foreach (var race in evtRaces)
             {
-                existingRacesDict[race.RaceNumber] = race; // This will overwrite duplicates
+                existingRacesDict[race.RaceNumber] = race;
             }
             
             // Handle duplicate race numbers by keeping the last occurrence
@@ -115,10 +158,84 @@ public class EvtFileManager : IDisposable
 
             // Store races for this source file
             _fileRaces[sourceFilePath] = racesList;
+            
+            // Update the EVT races in memory with the merged results
+            // This ensures that subsequent comparisons are against the updated EVT races
+            var updatedEvtRaces = new Dictionary<string, Race>();
+            
+            // Start with existing EVT races
+            var currentEvtRaces = _fileRaces.ContainsKey("evt_file_races") 
+                ? _fileRaces["evt_file_races"] 
+                : new List<Race>();
+            
+            foreach (var race in currentEvtRaces)
+            {
+                updatedEvtRaces[race.RaceNumber] = race;
+            }
+            
+            // Add/update with CSV races
+            foreach (var race in racesList)
+            {
+                updatedEvtRaces[race.RaceNumber] = race;
+            }
+            
+            // Update the EVT races in memory
+            _fileRaces["evt_file_races"] = updatedEvtRaces.Values.ToList();
         }
 
         await WriteAllRacesToEvtFileAsync();
+        
+        // Notify that races have been updated
+        RacesUpdated?.Invoke(this, EventArgs.Empty);
+        
         return stats;
+    }
+
+    public async Task CleanupOrphanedRacesAsync(IEnumerable<string> activeSourceFiles)
+    {
+        var activeFiles = activeSourceFiles.ToHashSet();
+        var stats = new RaceProcessingStats();
+
+        lock (_lockObject)
+        {
+            // Get all races from active CSV files
+            var activeRaces = _fileRaces
+                .Where(kvp => activeFiles.Contains(kvp.Key))
+                .SelectMany(kvp => kvp.Value)
+                .ToDictionary(race => race.RaceNumber, race => race);
+
+            // Get races from EVT file
+            var evtRaces = _fileRaces.ContainsKey("evt_file_races") 
+                ? _fileRaces["evt_file_races"] 
+                : new List<Race>();
+
+            // Find races in EVT that are not in any active CSV files
+            var orphanedRaces = evtRaces
+                .Where(race => !activeRaces.ContainsKey(race.RaceNumber))
+                .ToList();
+
+            if (orphanedRaces.Count > 0)
+            {
+                ApplicationLogger.Log($"Found {orphanedRaces.Count} orphaned races to remove: {string.Join(", ", orphanedRaces.Select(r => r.RaceNumber))}");
+                
+                // Remove orphaned races from EVT races
+                var updatedEvtRaces = evtRaces
+                    .Where(race => activeRaces.ContainsKey(race.RaceNumber))
+                    .ToList();
+                
+                _fileRaces["evt_file_races"] = updatedEvtRaces;
+                stats.RacesRemoved = orphanedRaces.Count;
+            }
+        }
+
+        if (stats.RacesRemoved > 0)
+        {
+            // Write updated races to EVT file
+            await WriteAllRacesToEvtFileAsync();
+            
+            // Notify that races have been updated
+            RacesUpdated?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public async Task RemoveRacesFromFileAsync(string sourceFilePath)
@@ -135,20 +252,15 @@ public class EvtFileManager : IDisposable
         }
 
         await WriteAllRacesToEvtFileAsync();
+        
+        // Notify that races have been updated
+        RacesUpdated?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task WriteAllRacesToEvtFileAsync()
     {
-        List<Race> allRaces;
-
-        lock (_lockObject)
-        {
-            allRaces = _fileRaces.Values
-                .SelectMany(races => races)
-                .OrderBy(race => race, new RaceNumberComparer())
-                .ToList();
-        }
-
+        // Use the same deduplication logic as GetAllRaces()
+        var allRaces = GetAllRaces().ToList();
         await WriteRacesToEvtFileAsync(allRaces);
     }
 

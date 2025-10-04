@@ -19,6 +19,7 @@ public class FileWatcherService : IDisposable
 
     public event EventHandler<string>? FileProcessed;
     public event EventHandler<string>? ErrorOccurred;
+    public event EventHandler? RacesUpdated;
 
     public FileWatcherService(AppConfig config, string watchDirectory, string finishLynxDirectory)
     {
@@ -26,6 +27,7 @@ public class FileWatcherService : IDisposable
         _watchDirectory = watchDirectory ?? throw new ArgumentNullException(nameof(watchDirectory));
         _finishLynxDirectory = finishLynxDirectory ?? throw new ArgumentNullException(nameof(finishLynxDirectory));
         _evtFileManager = new EvtFileManager(_finishLynxDirectory);
+        _evtFileManager.RacesUpdated += OnRacesUpdated;
         _raceDataConverter = new RaceDataConverter();
         _processedFiles = new Dictionary<string, DateTime>();
     }
@@ -113,6 +115,9 @@ public class FileWatcherService : IDisposable
             }
 
             ApplicationLogger.Log("Finished processing existing files");
+            
+            // Clean up orphaned races after processing all files
+            await CleanupOrphanedRacesAsync();
         }
         catch (Exception ex)
         {
@@ -176,6 +181,30 @@ public class FileWatcherService : IDisposable
         var errorMessage = $"File watcher error: {e.GetException().Message}";
         WatcherLogger.Log(errorMessage);
         ErrorOccurred?.Invoke(this, errorMessage);
+    }
+
+    private void OnRacesUpdated(object? sender, EventArgs e)
+    {
+        RacesUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    public IEnumerable<Race> GetAllRaces()
+    {
+        return _evtFileManager.GetAllRaces();
+    }
+
+    private async Task CleanupOrphanedRacesAsync()
+    {
+        try
+        {
+            // Get all active CSV files
+            var activeFiles = Directory.GetFiles(_watchDirectory, _config.GcpvExportFilePattern);
+            await _evtFileManager.CleanupOrphanedRacesAsync(activeFiles);
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error cleaning up orphaned races", ex);
+        }
     }
 
     private async Task ProcessFileAsync(string filePath)
