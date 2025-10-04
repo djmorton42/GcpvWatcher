@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Controls;
 using GcpvWatcher.App.Services;
+using GcpvWatcher.App.Models;
 using System.IO;
 
 namespace GcpvWatcher.App.ViewModels;
@@ -16,15 +17,26 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private bool _isWatching = false;
     private Window? _window;
     private readonly FileOperationsService _fileOperationsService;
+    private readonly AppConfigService _appConfigService;
+    private FileWatcherService? _fileWatcherService;
+    private AppConfig? _appConfig;
+    private UserPreferences _userPreferences = new();
 
     public MainWindowViewModel()
     {
         _fileOperationsService = new FileOperationsService();
-        BrowseWatchDirectoryCommand = new RelayCommand(BrowseWatchDirectory);
-        BrowseFinishLynxDirectoryCommand = new RelayCommand(BrowseFinishLynxDirectory);
+        _appConfigService = new AppConfigService();
+        BrowseWatchDirectoryCommand = new RelayCommand(BrowseWatchDirectory, () => CanBrowseWatchDirectory);
+        BrowseFinishLynxDirectoryCommand = new RelayCommand(BrowseFinishLynxDirectory, () => CanBrowseFinishLynxDirectory);
         StartWatchingCommand = new RelayCommand(StartWatching, () => CanStartWatching);
         StopWatchingCommand = new RelayCommand(StopWatching, () => CanStopWatching);
         CloseCommand = new RelayCommand(Close);
+        
+        // Load user preferences
+        LoadUserPreferences();
+        
+        // Load configuration
+        LoadConfiguration();
     }
 
     public void SetWindow(Window window)
@@ -37,12 +49,24 @@ public class MainWindowViewModel : INotifyPropertyChanged
         get => _watchDirectory;
         set
         {
-            _watchDirectory = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(CanStartWatching));
-            OnPropertyChanged(nameof(CanStopWatching));
-            ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
-            ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+            if (_watchDirectory != value)
+            {
+                _watchDirectory = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanStartWatching));
+                OnPropertyChanged(nameof(CanStopWatching));
+                ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+                
+                // Save user preferences
+                SaveUserPreferences();
+                
+                // If we're currently watching, restart watching with the new directory
+                if (_isWatching)
+                {
+                    RestartWatching();
+                }
+            }
         }
     }
 
@@ -51,12 +75,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
         get => _finishLynxDirectory;
         set
         {
-            _finishLynxDirectory = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(CanStartWatching));
-            OnPropertyChanged(nameof(CanStopWatching));
-            ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
-            ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+            if (_finishLynxDirectory != value)
+            {
+                _finishLynxDirectory = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanStartWatching));
+                OnPropertyChanged(nameof(CanStopWatching));
+                ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+                ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+                
+                // Save user preferences
+                SaveUserPreferences();
+            }
         }
     }
 
@@ -76,6 +106,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public bool CanStartWatching => !_isWatching && !string.IsNullOrEmpty(_watchDirectory) && !string.IsNullOrEmpty(_finishLynxDirectory);
 
     public bool CanStopWatching => _isWatching;
+
+    public bool CanBrowseWatchDirectory => !_isWatching;
+
+    public bool CanBrowseFinishLynxDirectory => !_isWatching;
 
     public ICommand BrowseWatchDirectoryCommand { get; }
     public ICommand BrowseFinishLynxDirectoryCommand { get; }
@@ -125,7 +159,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
                 catch (Exception ex)
                 {
-                    WatcherLogger.Log($"Error creating Lynx.evt file: {ex.Message}");
+                    ApplicationLogger.LogException($"Error creating Lynx.evt file", ex);
                     return; // Don't set the directory if file creation failed
                 }
             }
@@ -140,27 +174,168 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private void StartWatching()
     {
-        _isWatching = true;
-        Status = "Watching";
-        OnPropertyChanged(nameof(CanStartWatching));
-        OnPropertyChanged(nameof(CanStopWatching));
-        ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
-        ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+        try
+        {
+            if (_appConfig == null)
+            {
+                ApplicationLogger.Log("Configuration not loaded. Cannot start watching.");
+                return;
+            }
+
+            _fileWatcherService = new FileWatcherService(_appConfig, _watchDirectory, _finishLynxDirectory);
+            _fileWatcherService.FileProcessed += OnFileProcessed;
+            _fileWatcherService.ErrorOccurred += OnErrorOccurred;
+
+            _fileWatcherService.StartWatching();
+            
+            _isWatching = true;
+            Status = "Watching";
+            OnPropertyChanged(nameof(CanStartWatching));
+            OnPropertyChanged(nameof(CanStopWatching));
+            OnPropertyChanged(nameof(CanBrowseWatchDirectory));
+            OnPropertyChanged(nameof(CanBrowseFinishLynxDirectory));
+            ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)BrowseWatchDirectoryCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)BrowseFinishLynxDirectoryCommand).RaiseCanExecuteChanged();
+            
+            WatcherLogger.Log("File watching started successfully");
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException($"Error starting file watcher", ex);
+        }
     }
 
     private void StopWatching()
     {
-        _isWatching = false;
-        Status = "Not Watching";
-        OnPropertyChanged(nameof(CanStartWatching));
-        OnPropertyChanged(nameof(CanStopWatching));
-        ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
-        ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+        try
+        {
+            _fileWatcherService?.StopWatching();
+            _fileWatcherService?.Dispose();
+            _fileWatcherService = null;
+
+            _isWatching = false;
+            Status = "Not Watching";
+            OnPropertyChanged(nameof(CanStartWatching));
+            OnPropertyChanged(nameof(CanStopWatching));
+            OnPropertyChanged(nameof(CanBrowseWatchDirectory));
+            OnPropertyChanged(nameof(CanBrowseFinishLynxDirectory));
+            ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)BrowseWatchDirectoryCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)BrowseFinishLynxDirectoryCommand).RaiseCanExecuteChanged();
+            
+            WatcherLogger.Log("File watching stopped");
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException($"Error stopping file watcher", ex);
+        }
     }
 
     private void Close()
     {
+        StopWatching();
         System.Environment.Exit(0);
+    }
+
+    private void LoadUserPreferences()
+    {
+        try
+        {
+            _userPreferences = UserPreferences.Load();
+            
+            // Set directories if they exist and are valid
+            if (!string.IsNullOrEmpty(_userPreferences.WatchDirectory) && Directory.Exists(_userPreferences.WatchDirectory))
+            {
+                _watchDirectory = _userPreferences.WatchDirectory;
+                OnPropertyChanged(nameof(WatchDirectory));
+            }
+            
+            if (!string.IsNullOrEmpty(_userPreferences.FinishLynxDirectory) && Directory.Exists(_userPreferences.FinishLynxDirectory))
+            {
+                _finishLynxDirectory = _userPreferences.FinishLynxDirectory;
+                OnPropertyChanged(nameof(FinishLynxDirectory));
+            }
+            
+            ApplicationLogger.Log("User preferences loaded successfully");
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error loading user preferences", ex);
+            _userPreferences = new UserPreferences();
+        }
+    }
+
+    private void SaveUserPreferences()
+    {
+        try
+        {
+            if (_userPreferences != null)
+            {
+                _userPreferences.WatchDirectory = _watchDirectory;
+                _userPreferences.FinishLynxDirectory = _finishLynxDirectory;
+                _userPreferences.Save();
+                ApplicationLogger.Log("User preferences saved successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error saving user preferences", ex);
+        }
+    }
+
+    private async void LoadConfiguration()
+    {
+        try
+        {
+            _appConfig = await _appConfigService.LoadConfigAsync();
+            ApplicationLogger.Log("Configuration loaded successfully");
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException($"Error loading configuration", ex);
+        }
+    }
+
+    private void OnFileProcessed(object? sender, string filePath)
+    {
+        var fileName = Path.GetFileName(filePath);
+        ApplicationLogger.Log($"Processed file: {fileName}");
+    }
+
+    private void OnErrorOccurred(object? sender, string errorMessage)
+    {
+        WatcherLogger.Log(errorMessage);
+    }
+
+    private void RestartWatching()
+    {
+        try
+        {
+            ApplicationLogger.Log("Watch directory changed, restarting file watcher...");
+            
+            // Stop current watching
+            _fileWatcherService?.StopWatching();
+            _fileWatcherService?.Dispose();
+            _fileWatcherService = null;
+
+            // Start watching with new directory
+            if (_appConfig != null)
+            {
+                _fileWatcherService = new FileWatcherService(_appConfig, _watchDirectory, _finishLynxDirectory);
+                _fileWatcherService.FileProcessed += OnFileProcessed;
+                _fileWatcherService.ErrorOccurred += OnErrorOccurred;
+                _fileWatcherService.StartWatching();
+                
+                ApplicationLogger.Log($"Now watching directory: {_watchDirectory}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException($"Error restarting file watcher", ex);
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

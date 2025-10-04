@@ -3,12 +3,12 @@ using System;
 namespace GcpvWatcher.App.Services;
 
 /// <summary>
-/// Static logger class for GcpvWatcher application
+/// User-facing logger for GcpvWatcher application status and user-relevant information
 /// </summary>
 public static class WatcherLogger
 {
     /// <summary>
-    /// Logs a message to the console
+    /// Logs a user-facing message (status updates, file processing results, etc.)
     /// </summary>
     /// <param name="message">The message to log</param>
     public static void Log(string message)

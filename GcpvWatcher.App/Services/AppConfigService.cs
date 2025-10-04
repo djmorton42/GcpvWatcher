@@ -14,6 +14,7 @@ public class AppConfigService
 
     public async Task<AppConfig> LoadConfigAsync()
     {
+        ApplicationLogger.Log($"Looking for configuration file at: {_configPath}");
         if (!File.Exists(_configPath))
             throw new FileNotFoundException($"Configuration file '{_configPath}' not found.");
 

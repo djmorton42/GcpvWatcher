@@ -23,6 +23,15 @@ mkdir -p "$DIST_DIR"
 # Change to the application directory
 cd "$(dirname "$0")/GcpvWatcher.App"
 
+# Copy configuration file to application directory
+echo "📋 Copying configuration file..."
+if [ -f "../appconfig.json" ]; then
+    cp "../appconfig.json" "appconfig.json"
+    echo "✅ Configuration file copied successfully"
+else
+    echo "❌ Warning: appconfig.json not found in project root"
+fi
+
 # Build for Windows x64 with self-contained deployment
 echo "🔨 Building for Windows x64..."
 dotnet publish \
@@ -40,10 +49,10 @@ cd "../$DIST_DIR"
 
 # Create a README for the distribution
 cat > README.txt << EOF
-GcpvWatcher Calculator v${VERSION}
-================================
+GcpvWatcher v${VERSION}
+=====================
 
-This is a Windows desktop calculator application built with Avalonia UI.
+This is a Windows desktop file watcher application for GCPV export files built with Avalonia UI.
 
 System Requirements:
 - Windows 10 or later
@@ -51,13 +60,16 @@ System Requirements:
 
 How to Run:
 1. Double-click on GcpvWatcher.exe
-2. Click "Calculate" to see 4 + 2 = 6
-3. Click "Close" to exit
+2. Select the watch directory (where GCPV export files are placed)
+3. Select the FinishLynx directory (where Lynx.evt file is located)
+4. Click "Start Watching" to begin monitoring
+5. The application will automatically process files matching the pattern
 
 Features:
-- Simple calculator with add functionality
+- Real-time file monitoring for GCPV export files
+- Automatic race data extraction and conversion
+- EVT file generation for FinishLynx
 - Clean, modern UI
-- Independent theme (ignores system theme)
 - No installation required
 
 Built: $(date)
@@ -66,7 +78,7 @@ EOF
 # Create a simple batch file to run the application
 cat > run.bat << EOF
 @echo off
-echo Starting GcpvWatcher Calculator...
+echo Starting GcpvWatcher...
 GcpvWatcher.exe
 pause
 EOF
