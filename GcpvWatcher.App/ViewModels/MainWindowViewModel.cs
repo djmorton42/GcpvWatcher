@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Controls;
 using GcpvWatcher.App.Services;
+using System.IO;
 
 namespace GcpvWatcher.App.ViewModels;
 
@@ -14,9 +15,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private string _status = "Not Watching";
     private bool _isWatching = false;
     private Window? _window;
+    private readonly FileOperationsService _fileOperationsService;
 
     public MainWindowViewModel()
     {
+        _fileOperationsService = new FileOperationsService();
         BrowseWatchDirectoryCommand = new RelayCommand(BrowseWatchDirectory);
         BrowseFinishLynxDirectoryCommand = new RelayCommand(BrowseFinishLynxDirectory);
         StartWatchingCommand = new RelayCommand(StartWatching, () => CanStartWatching);
@@ -110,7 +113,28 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var result = await _window.StorageProvider.OpenFolderPickerAsync(options);
         if (result.Count > 0)
         {
-            FinishLynxDirectory = result[0].Path.LocalPath;
+            var selectedDirectory = result[0].Path.LocalPath;
+            
+            // Check if Lynx.evt file exists, create it if it doesn't
+            if (!_fileOperationsService.LynxEvtFileExists(selectedDirectory))
+            {
+                try
+                {
+                    var createdFilePath = _fileOperationsService.CreateLynxEvtFile(selectedDirectory);
+                    WatcherLogger.Log("Lynx.evt file not found. Created.");
+                }
+                catch (Exception ex)
+                {
+                    WatcherLogger.Log($"Error creating Lynx.evt file: {ex.Message}");
+                    return; // Don't set the directory if file creation failed
+                }
+            }
+            else
+            {
+                WatcherLogger.Log("Lynx.evt file found.");
+            }
+            
+            FinishLynxDirectory = selectedDirectory;
         }
     }
 
