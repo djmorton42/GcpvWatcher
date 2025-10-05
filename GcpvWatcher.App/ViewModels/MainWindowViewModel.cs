@@ -10,7 +10,7 @@ using System.Collections.ObjectModel;
 
 namespace GcpvWatcher.App.ViewModels;
 
-public class MainWindowViewModel : INotifyPropertyChanged
+public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 {
     private string _watchDirectory = "";
     private string _finishLynxDirectory = "";
@@ -23,6 +23,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private AppConfig? _appConfig;
     private UserPreferences _userPreferences = new();
     private readonly ObservableCollection<Race> _races = new();
+    private string _logContent = "";
 
     public MainWindowViewModel()
     {
@@ -33,6 +34,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
         StartWatchingCommand = new RelayCommand(StartWatching, () => CanStartWatching);
         StopWatchingCommand = new RelayCommand(StopWatching, () => CanStopWatching);
         CloseCommand = new RelayCommand(Close);
+        
+        // Subscribe to logger events
+        WatcherLogger.LogMessage += OnLogMessage;
         
         // Load user preferences
         LoadUserPreferences();
@@ -114,6 +118,19 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public bool CanBrowseFinishLynxDirectory => !_isWatching;
 
     public ObservableCollection<Race> Races => _races;
+
+    public string LogContent
+    {
+        get => _logContent;
+        set
+        {
+            if (_logContent != value)
+            {
+                _logContent = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public ICommand BrowseWatchDirectoryCommand { get; }
     public ICommand BrowseFinishLynxDirectoryCommand { get; }
@@ -333,6 +350,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OnLogMessage(object? sender, string message)
+    {
+        // Update log content on the UI thread
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            LogContent += message + Environment.NewLine;
+        });
+    }
+
     private void RestartWatching()
     {
         try
@@ -360,6 +386,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             ApplicationLogger.LogException($"Error restarting file watcher", ex);
         }
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from logger events
+        WatcherLogger.LogMessage -= OnLogMessage;
+        
+        // Stop watching and dispose file watcher
+        StopWatching();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

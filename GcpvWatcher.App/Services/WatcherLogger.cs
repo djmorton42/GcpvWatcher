@@ -8,6 +8,11 @@ namespace GcpvWatcher.App.Services;
 public static class WatcherLogger
 {
     /// <summary>
+    /// Event raised when a log message is written
+    /// </summary>
+    public static event EventHandler<string>? LogMessage;
+
+    /// <summary>
     /// Logs a user-facing message (status updates, file processing results, etc.)
     /// </summary>
     /// <param name="message">The message to log</param>
@@ -17,6 +22,9 @@ public static class WatcherLogger
             return;
 
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        Console.WriteLine($"[{timestamp}] {message}");
+        var formattedMessage = $"[{timestamp}] {message}";
+        
+        Console.WriteLine(formattedMessage);
+        LogMessage?.Invoke(null, formattedMessage);
     }
 }

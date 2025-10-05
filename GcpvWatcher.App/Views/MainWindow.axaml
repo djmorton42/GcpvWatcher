@@ -5,12 +5,18 @@
         x:Class="GcpvWatcher.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="GcpvWatcher Directory Monitor"
-        Width="500" Height="400"
+        Width="600" Height="800"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <converters:RacersToStringConverter x:Key="RacersToStringConverter" />
     </Window.Resources>
+    
+    <Window.Styles>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Styles>
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -127,56 +133,68 @@
                     Height="35" />
         </StackPanel>
 
-        <!-- Races List -->
-        <TextBlock Grid.Row="7" 
-                   Text="Races:" 
-                   FontSize="14" 
-                   FontWeight="SemiBold" 
-                   Margin="0,0,0,5" />
-        
-        <ScrollViewer Grid.Row="8" 
-                      VerticalScrollBarVisibility="Auto" 
-                      HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Races}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="LightGray" 
-                                BorderBrush="DarkGray" 
-                                BorderThickness="1" 
-                                CornerRadius="3" 
-                                Margin="0,2" 
-                                Padding="8">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Race " 
-                                               FontWeight="Bold" 
-                                               FontSize="12" />
-                                    <TextBlock Text="{Binding RaceNumber}" 
-                                               FontWeight="Bold" 
-                                               FontSize="12" />
-                                </StackPanel>
-                                <TextBlock Text="{Binding RaceTitle}" 
-                                           FontSize="11" 
-                                           Margin="0,2,0,0" />
-                                <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                    <TextBlock Text="{Binding NumberOfLaps}" 
-                                               FontSize="10" 
-                                               Foreground="DarkBlue" />
-                                    <TextBlock Text=" laps" 
-                                               FontSize="10" 
-                                               Foreground="DarkBlue" />
-                                </StackPanel>
-                                <TextBlock Text="{Binding Racers, Converter={StaticResource RacersToStringConverter}}" 
-                                           FontSize="9" 
-                                           Foreground="DarkGreen" 
-                                           Margin="0,1,0,0" 
-                                           TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+        <!-- Tabbed Content -->
+        <TabControl Grid.Row="7" Margin="0,0,0,0">
+            <TabItem Header="Races">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Races}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="LightGray" 
+                                        BorderBrush="DarkGray" 
+                                        BorderThickness="1" 
+                                        CornerRadius="3" 
+                                        Margin="0,2" 
+                                        Padding="8">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Race " 
+                                                       FontWeight="Bold" 
+                                                       FontSize="12" />
+                                            <TextBlock Text="{Binding RaceNumber}" 
+                                                       FontWeight="Bold" 
+                                                       FontSize="12" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding RaceTitle}" 
+                                                   FontSize="11" 
+                                                   Margin="0,2,0,0" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                            <TextBlock Text="{Binding NumberOfLaps}" 
+                                                       FontSize="10" 
+                                                       Foreground="DarkBlue" />
+                                            <TextBlock Text=" laps" 
+                                                       FontSize="10" 
+                                                       Foreground="DarkBlue" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Racers, Converter={StaticResource RacersToStringConverter}}" 
+                                                   FontSize="9" 
+                                                   Foreground="DarkGreen" 
+                                                   Margin="0,1,0,0" 
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+            
+            <TabItem Header="Log">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding LogContent}" 
+                             IsReadOnly="True" 
+                             TextWrapping="Wrap" 
+                             AcceptsReturn="True" 
+                             FontFamily="Consolas, Courier New, monospace" 
+                             FontSize="11" 
+                             Background="White" 
+                             Foreground="Black" 
+                             BorderThickness="0" />
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
 

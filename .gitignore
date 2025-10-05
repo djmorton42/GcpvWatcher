@@ -56,4 +56,5 @@ nunit-*.xml
 
 etc/EventDirectory/
 etc/ExportDirectory/
+etc/Lynx.evt
 GcpvWatcher.App/appconfig.json
