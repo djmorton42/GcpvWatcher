@@ -2,6 +2,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using GcpvWatcher.App.Models;
 using GcpvWatcher.App.Providers;
+using GcpvWatcher.App.Services;
 using System.Globalization;
 
 namespace GcpvWatcher.App.Parsers;
@@ -15,62 +16,74 @@ public class PplParser
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
     }
 
-    public async Task<IEnumerable<Racer>> ParseAsync()
+    public async Task<Dictionary<int, Racer>> ParseAsync()
     {
         var dataRows = await _dataProvider.GetDataRowsAsync();
-        var racers = new List<Racer>();
+        var racers = new Dictionary<int, Racer>();
 
         foreach (var row in dataRows)
         {
-            var racer = ParseRacerFromRow(row);
-            racers.Add(racer);
+            var racer = ParseRacerRow(row);
+            if (racer != null)
+            {
+                racers[racer.RacerId] = racer;
+            }
         }
 
         return racers;
     }
 
-    private Racer ParseRacerFromRow(string row)
+    private Racer? ParseRacerRow(string row)
     {
         if (string.IsNullOrWhiteSpace(row))
-            throw new ArgumentException("Row cannot be null or empty.");
+            return null;
 
-        // Use CsvHelper to parse the row
+        // Use CsvHelper to parse the racer row
         using var reader = new StringReader(row);
         using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             HasHeaderRecord = false,
             TrimOptions = TrimOptions.Trim | TrimOptions.InsideQuotes,
             IgnoreBlankLines = true,
-            MissingFieldFound = null // Don't throw on missing fields, just ignore them
+            MissingFieldFound = null
         });
 
         try
         {
-            var records = csv.GetRecords<RacerCsvRecord>().ToList();
+            var records = csv.GetRecords<PplRacerCsvRecord>().ToList();
             
             if (records.Count != 1)
             {
-                throw new ArgumentException($"Invalid row format. Expected 1 record, got {records.Count}. Row: {row}");
+                WatcherLogger.Log("Warning: Problem parsing PPL file");
+                return null;
             }
 
             var record = records[0];
             
-            // Validate and convert RacerId
+            // Validate racer ID
             if (!int.TryParse(record.RacerId.Trim(), out var racerId))
             {
-                throw new ArgumentException($"Invalid racer ID format: {record.RacerId}");
+                WatcherLogger.Log("Warning: Problem parsing PPL file");
+                return null;
             }
 
-            return new Racer(
-                racerId,
-                record.LastName.Trim(),
-                record.FirstName.Trim(),
-                record.Affiliation.Trim()
-            );
+            // Validate that we have the required fields
+            var lastName = record.LastName.Trim();
+            var firstName = record.FirstName.Trim();
+            var affiliation = record.Affiliation.Trim();
+
+            if (string.IsNullOrEmpty(lastName) || string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(affiliation))
+            {
+                WatcherLogger.Log("Warning: Problem parsing PPL file");
+                return null;
+            }
+
+            return new Racer(racerId, lastName, firstName, affiliation);
         }
-        catch (Exception ex) when (ex is not ArgumentException)
+        catch (Exception)
         {
-            throw new ArgumentException($"Error parsing PPL file row: {ex.Message}. Row: {row}", ex);
+            WatcherLogger.Log("Warning: Problem parsing PPL file");
+            return null;
         }
     }
 }

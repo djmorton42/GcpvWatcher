@@ -119,6 +119,8 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 
     public ObservableCollection<Race> Races => _races;
 
+    public Dictionary<int, Racer> Racers => _fileWatcherService?.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<int, Racer>();
+
     public string LogContent
     {
         get => _logContent;
@@ -207,6 +209,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             _fileWatcherService.FileProcessed += OnFileProcessed;
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
             _fileWatcherService.RacesUpdated += OnRacesUpdated;
+            _fileWatcherService.RacersUpdated += OnRacersUpdated;
 
             await _fileWatcherService.StartWatchingAsync();
             
@@ -338,6 +341,10 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         {
             var allRaces = _fileWatcherService.GetAllRaces().ToList();
             
+            // Update racer data in static service
+            var racers = _fileWatcherService.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            RacerDataService.UpdateRacers(racers);
+            
             // Update the races collection on the UI thread
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -348,6 +355,22 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 }
             });
         }
+    }
+
+    private void OnRacersUpdated(object? sender, EventArgs e)
+    {
+        // Update the static racer data service
+        if (_fileWatcherService != null)
+        {
+            var racers = _fileWatcherService.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            RacerDataService.UpdateRacers(racers);
+        }
+        
+        // Notify that the Racers property has changed
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            OnPropertyChanged(nameof(Racers));
+        });
     }
 
     private void OnLogMessage(object? sender, string message)
@@ -377,6 +400,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 _fileWatcherService.FileProcessed += OnFileProcessed;
                 _fileWatcherService.ErrorOccurred += OnErrorOccurred;
                 _fileWatcherService.RacesUpdated += OnRacesUpdated;
+                _fileWatcherService.RacersUpdated += OnRacersUpdated;
                 await _fileWatcherService.StartWatchingAsync();
                 
                 ApplicationLogger.Log($"Now watching directory: {_watchDirectory}");

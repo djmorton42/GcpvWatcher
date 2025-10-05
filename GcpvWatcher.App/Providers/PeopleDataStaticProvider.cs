@@ -2,17 +2,15 @@ namespace GcpvWatcher.App.Providers;
 
 public class PeopleDataStaticProvider : BaseDataProvider
 {
-    private readonly IEnumerable<string> _dataRows;
+    private readonly IEnumerable<string> _data;
 
-    public PeopleDataStaticProvider(IEnumerable<string> dataRows)
+    public PeopleDataStaticProvider(IEnumerable<string> data)
     {
-        _dataRows = dataRows ?? throw new ArgumentNullException(nameof(dataRows));
+        _data = data ?? throw new ArgumentNullException(nameof(data));
     }
 
     public override Task<IEnumerable<string>> GetDataRowsAsync()
     {
-        // Use base class filtering for comment lines
-        var filteredRows = FilterCommentLines(_dataRows);
-        return Task.FromResult(filteredRows);
+        return Task.FromResult(FilterCommentLines(_data));
     }
 }

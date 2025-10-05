@@ -17,10 +17,23 @@ public class FileWatcherService : IDisposable
     private readonly object _lockObject = new object();
     private bool _disposed = false;
     private Timer? _cleanupTimer;
+    private Dictionary<int, Racer> _racers = new Dictionary<int, Racer>();
 
     public event EventHandler<string>? FileProcessed;
     public event EventHandler<string>? ErrorOccurred;
     public event EventHandler? RacesUpdated;
+    public event EventHandler? RacersUpdated;
+
+    public IReadOnlyDictionary<int, Racer> Racers
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            }
+        }
+    }
 
     public FileWatcherService(AppConfig config, string watchDirectory, string finishLynxDirectory)
     {
@@ -82,11 +95,31 @@ public class FileWatcherService : IDisposable
 
         WatcherLogger.Log($"Started watching: {_watchDirectory} for pattern: {_config.GcpvExportFilePattern}");
         
-        // Load existing races from EVT file first
-        await LoadExistingRacesFromEvtFileAsync();
-        
-        // Process existing files immediately
-        ProcessExistingFiles();
+        try
+        {
+            // Load existing races from EVT file first
+            await LoadExistingRacesFromEvtFileAsync();
+            
+            // Load existing racers from PPL file if it exists
+            await LoadExistingRacersFromPplFileAsync();
+            
+            // Process existing files immediately
+            ProcessExistingFiles();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("timed out"))
+        {
+            // Stop the file watcher if parsing times out
+            _fileWatcher.EnableRaisingEvents = false;
+            _fileWatcher.Created -= OnFileChanged;
+            _fileWatcher.Changed -= OnFileChanged;
+            _fileWatcher.Deleted -= OnFileDeleted;
+            _fileWatcher.Error -= OnError;
+            _fileWatcher.Dispose();
+            _fileWatcher = null;
+            
+            WatcherLogger.Log("File watcher stopped due to parsing timeout");
+            throw; // Re-throw to indicate startup failure
+        }
     }
 
     public void StartWatching()
@@ -122,13 +155,7 @@ public class FileWatcherService : IDisposable
                 return await parser.ParseAsync();
             });
             
-            if (!loadTask.Wait(TimeSpan.FromSeconds(5))) // 5 second timeout
-            {
-                WatcherLogger.Log("EVT file parsing timed out, starting with empty race list");
-                return;
-            }
-            
-            var existingRaces = loadTask.Result;
+            var existingRaces = await loadTask.WaitAsync(TimeSpan.FromSeconds(5)); // 5 second timeout
             var racesList = existingRaces.ToList();
             
             if (racesList.Count > 0)
@@ -142,10 +169,66 @@ public class FileWatcherService : IDisposable
                 WatcherLogger.Log("EVT file exists but contains no races");
             }
         }
+        catch (TimeoutException)
+        {
+            var errorMessage = "Unable to read existing EVT file. Watching stopped.";
+            WatcherLogger.Log(errorMessage);
+            throw new InvalidOperationException(errorMessage);
+        }
         catch (Exception ex)
         {
             WatcherLogger.Log($"Error loading existing races from EVT file: {ex.Message}");
             // Continue with empty race list - don't fail startup
+        }
+    }
+
+    private async Task LoadExistingRacersFromPplFileAsync()
+    {
+        try
+        {
+            var lynxPplFilePath = Path.Combine(_finishLynxDirectory, "Lynx.ppl");
+            
+            if (!File.Exists(lynxPplFilePath))
+            {
+                WatcherLogger.Log("No existing PPL file found, starting with empty racer list");
+                return;
+            }
+
+            // Check if file is empty or very small
+            var fileInfo = new FileInfo(lynxPplFilePath);
+            if (fileInfo.Length < 5) // Less than 5 bytes, likely empty
+            {
+                WatcherLogger.Log("PPL file exists but appears to be empty, starting with empty racer list");
+                return;
+            }
+            
+            // Use a timeout to prevent hanging
+            var loadTask = Task.Run(async () =>
+            {
+                var dataProvider = new PeopleDataFileProvider(lynxPplFilePath);
+                var parser = new PplParser(dataProvider);
+                return await parser.ParseAsync();
+            });
+            
+            var racers = await loadTask.WaitAsync(TimeSpan.FromSeconds(5)); // 5 second timeout
+            
+            lock (_lockObject)
+            {
+                _racers = racers;
+            }
+            WatcherLogger.Log($"Loaded {_racers.Count} existing racers from PPL file");
+            RacersUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        catch (TimeoutException)
+        {
+            var errorMessage = "PPL file parsing timed out - this indicates a serious issue with the file. Stopping file watcher.";
+            WatcherLogger.Log(errorMessage);
+            throw new InvalidOperationException(errorMessage);
+        }
+        catch (Exception ex)
+        {
+            WatcherLogger.Log($"Error loading existing racers from PPL file: {ex.Message}");
+            // Continue with empty racer list - don't fail startup
         }
     }
 

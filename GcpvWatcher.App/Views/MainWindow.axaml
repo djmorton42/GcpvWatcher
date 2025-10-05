@@ -192,6 +192,7 @@
                                         </StackPanel>
                                         <TextBlock Text="{Binding Racers, Converter={StaticResource RacersToStringConverter}}" 
                                                    FontSize="9" 
+                                                   FontFamily="Consolas, Courier New, monospace"
                                                    Foreground="DarkGreen" 
                                                    Margin="0,1,0,0" 
                                                    TextWrapping="Wrap" />

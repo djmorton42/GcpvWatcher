@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using Avalonia.Data.Converters;
 using GcpvWatcher.App.Models;
+using GcpvWatcher.App.Services;
 
 namespace GcpvWatcher.App.Converters;
 
@@ -14,13 +15,30 @@ public class RacersToStringConverter : IValueConverter
         {
             if (racers.Count == 0)
                 return "No racers";
+            
+            // Get racer data from static service
+            var racerData = RacerDataService.GetRacers();
                 
             var racerStrings = racers
                 .OrderBy(kvp => kvp.Value) // Order by lane
-                .Select(kvp => $"Racer {kvp.Key} (Lane {kvp.Value})")
+                .Select(kvp => 
+                {
+                    var racerId = kvp.Key;
+                    var lane = kvp.Value;
+                    
+                    if (racerData != null && racerData.TryGetValue(racerId, out var racer))
+                    {
+                        // Use fixed-width formatting optimized for monospace font
+                        return $"Lane {lane,2}, {racerId,4} - {racer.FirstName} {racer.LastName} ({racer.Affiliation})";
+                    }
+                    else
+                    {
+                        return $"Lane {lane,2}, {racerId,4}";
+                    }
+                })
                 .ToArray();
                 
-            return string.Join(", ", racerStrings);
+            return string.Join(Environment.NewLine, racerStrings);
         }
         
         return "No racers";

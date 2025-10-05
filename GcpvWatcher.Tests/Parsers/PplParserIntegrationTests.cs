@@ -15,27 +15,23 @@ public class PplParserIntegrationTests
         var parser = new PplParser(provider);
 
         // Act
-        var result = await parser.ParseAsync();
-        var racers = result.ToList();
+        var racers = await parser.ParseAsync();
 
         // Assert
         Assert.True(racers.Count > 0, "Should have parsed at least one racer from the file");
         
         // Check some specific racers from the file
-        var lopez = racers.FirstOrDefault(r => r.RacerId == 116);
-        Assert.NotNull(lopez);
+        Assert.True(racers.TryGetValue(116, out var lopez));
         Assert.Equal("Lopez", lopez.LastName);
         Assert.Equal("Nancy", lopez.FirstName);
         Assert.Equal("St. Lawrence", lopez.Affiliation);
 
-        var belanger = racers.FirstOrDefault(r => r.RacerId == 667);
-        Assert.NotNull(belanger);
+        Assert.True(racers.TryGetValue(667, out var belanger));
         Assert.Equal("Bélanger", belanger.LastName);
         Assert.Equal("Daniel", belanger.FirstName);
         Assert.Equal("CPV Gatineau", belanger.Affiliation);
 
-        var baileyMartin = racers.FirstOrDefault(r => r.RacerId == 693);
-        Assert.NotNull(baileyMartin);
+        Assert.True(racers.TryGetValue(693, out var baileyMartin));
         Assert.Equal("Bailey Martin", baileyMartin.LastName);
         Assert.Equal("Helen", baileyMartin.FirstName);
         Assert.Equal("Newmarket", baileyMartin.Affiliation);
@@ -50,11 +46,10 @@ public class PplParserIntegrationTests
         var parser = new PplParser(provider);
 
         // Act
-        var result = await parser.ParseAsync();
-        var racers = result.ToList();
+        var racers = await parser.ParseAsync();
 
         // Assert
-        var belanger = racers.FirstOrDefault(r => r.LastName == "Bélanger");
+        var belanger = racers.Values.FirstOrDefault(r => r.LastName == "Bélanger");
         Assert.NotNull(belanger);
         Assert.Equal("Bélanger", belanger.LastName);
     }
@@ -68,17 +63,16 @@ public class PplParserIntegrationTests
         var parser = new PplParser(provider);
 
         // Act
-        var result = await parser.ParseAsync();
-        var racers = result.ToList();
+        var racers = await parser.ParseAsync();
 
         // Assert
-        var stLawrenceRacers = racers.Where(r => r.Affiliation == "St. Lawrence").ToList();
+        var stLawrenceRacers = racers.Values.Where(r => r.Affiliation == "St. Lawrence").ToList();
         Assert.True(stLawrenceRacers.Count > 0, "Should have racers from St. Lawrence");
 
-        var kitchenerWaterlooRacers = racers.Where(r => r.Affiliation == "Kitchener-Waterloo").ToList();
+        var kitchenerWaterlooRacers = racers.Values.Where(r => r.Affiliation == "Kitchener-Waterloo").ToList();
         Assert.True(kitchenerWaterlooRacers.Count > 0, "Should have racers from Kitchener-Waterloo");
 
-        var montrealCentreSudRacers = racers.Where(r => r.Affiliation == "CPV Montreal-Centre-Sud").ToList();
+        var montrealCentreSudRacers = racers.Values.Where(r => r.Affiliation == "CPV Montreal-Centre-Sud").ToList();
         Assert.True(montrealCentreSudRacers.Count > 0, "Should have racers from CPV Montreal-Centre-Sud");
     }
 
@@ -141,31 +135,30 @@ public class PplParserIntegrationTests
             var parser = new PplParser(provider);
 
             // Act
-            var result = await parser.ParseAsync();
-            var racers = result.ToList();
+            var racers = await parser.ParseAsync();
 
             // Assert
             Assert.Equal(4, racers.Count);
             
-            Assert.Equal(100, racers[0].RacerId);
-            Assert.Equal("Smith", racers[0].LastName);
-            Assert.Equal("John", racers[0].FirstName);
-            Assert.Equal("Toronto", racers[0].Affiliation);
+            Assert.True(racers.TryGetValue(100, out var racer100));
+            Assert.Equal("Smith", racer100.LastName);
+            Assert.Equal("John", racer100.FirstName);
+            Assert.Equal("Toronto", racer100.Affiliation);
 
-            Assert.Equal(101, racers[1].RacerId);
-            Assert.Equal("Johnson", racers[1].LastName);
-            Assert.Equal("Jane", racers[1].FirstName);
-            Assert.Equal("Montreal", racers[1].Affiliation);
+            Assert.True(racers.TryGetValue(101, out var racer101));
+            Assert.Equal("Johnson", racer101.LastName);
+            Assert.Equal("Jane", racer101.FirstName);
+            Assert.Equal("Montreal", racer101.Affiliation);
 
-            Assert.Equal(102, racers[2].RacerId);
-            Assert.Equal("Brown", racers[2].LastName);
-            Assert.Equal("Bob", racers[2].FirstName);
-            Assert.Equal("Kingston", racers[2].Affiliation);
+            Assert.True(racers.TryGetValue(102, out var racer102));
+            Assert.Equal("Brown", racer102.LastName);
+            Assert.Equal("Bob", racer102.FirstName);
+            Assert.Equal("Kingston", racer102.Affiliation);
 
-            Assert.Equal(103, racers[3].RacerId);
-            Assert.Equal("Davis", racers[3].LastName);
-            Assert.Equal("Alice", racers[3].FirstName);
-            Assert.Equal("Hamilton", racers[3].Affiliation);
+            Assert.True(racers.TryGetValue(103, out var racer103));
+            Assert.Equal("Davis", racer103.LastName);
+            Assert.Equal("Alice", racer103.FirstName);
+            Assert.Equal("Hamilton", racer103.Affiliation);
         }
         finally
         {
