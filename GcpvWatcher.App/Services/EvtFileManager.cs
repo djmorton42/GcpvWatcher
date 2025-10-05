@@ -269,7 +269,7 @@ public class EvtFileManager : IDisposable
         var evtContent = GenerateEvtContent(races);
         await File.WriteAllTextAsync(_lynxEvtFilePath, evtContent);
         
-        WatcherLogger.Log($"Updated Lynx.evt with {races.Count()} races");
+        //WatcherLogger.Log($"Updated Lynx.evt with {races.Count()} races");
     }
 
     private string GenerateEvtContent(IEnumerable<Race> races)
@@ -357,6 +357,7 @@ public class EvtFileManager : IDisposable
             {
                 _fileRaces[unknownSourceKey] = racesList;
                 ApplicationLogger.Log($"Loaded {racesList.Count} existing races from EVT file");
+                WatcherLogger.Log($"Loaded {racesList.Count} existing races from EVT file");
             }
             else
             {

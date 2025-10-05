@@ -47,6 +47,26 @@ public class FileWatcherService : IDisposable
             throw new DirectoryNotFoundException($"FinishLynx directory does not exist: {_finishLynxDirectory}");
         }
 
+        // Check if Lynx.evt file exists, create it if it doesn't
+        var fileOperationsService = new FileOperationsService();
+        if (!fileOperationsService.LynxEvtFileExists(_finishLynxDirectory))
+        {
+            try
+            {
+                var createdFilePath = fileOperationsService.CreateLynxEvtFile(_finishLynxDirectory);
+                WatcherLogger.Log($"Lynx.evt file not found. Created.");
+            }
+            catch (Exception ex)
+            {
+                WatcherLogger.Log($"Error creating Lynx.evt file: {ex.Message}");
+                throw;
+            }
+        }
+        else
+        {
+            WatcherLogger.Log("Lynx.evt file found.");
+        }
+
         _fileWatcher = new FileSystemWatcher(_watchDirectory)
         {
             Filter = _config.GcpvExportFilePattern,
@@ -232,7 +252,7 @@ public class FileWatcherService : IDisposable
 
         // Log statistics to both loggers
         var fileName = Path.GetFileName(filePath);
-        var userMessage = $"Processed {fileName}: {stats}";
+        var userMessage = $"Processed \"{fileName}\": {stats}";
         var detailedMessage = $"File: {fileName} - Added: {stats.RacesAdded}, Updated: {stats.RacesUpdated}, Unchanged: {stats.RacesUnchanged}, Removed: {stats.RacesRemoved}";
         
         WatcherLogger.Log(userMessage);
