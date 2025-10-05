@@ -60,3 +60,4 @@ etc/Lynx.evt
 GcpvWatcher.App/appconfig.json
 dist/
 GcpvWatcher.App/etc/
+*.zip

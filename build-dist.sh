@@ -53,25 +53,31 @@ dotnet publish \
     --configuration Release \
     --runtime "$WINDOWS_RUNTIME" \
     --self-contained true \
-    --output "../$DIST_DIR/$APP_NAME" \
+    --output "../$DIST_DIR" \
     -p:PublishSingleFile=true \
     -p:PublishTrimmed=true \
-    -p:IncludeNativeLibrariesForSelfExtract=true
+    -p:IncludeNativeLibrariesForSelfExtract=true \
+    -p:AssemblyName=GcpvWatcher
 
 # Copy additional files to distribution directory
 echo "📝 Copying additional files to distribution..."
 cd "../$DIST_DIR"
 
-# Copy configuration and notification files to the distribution
+# Remove PDB file (not needed for distribution)
+echo "🧹 Removing debug symbols..."
+rm -f *.pdb
+echo "✅ Debug symbols removed"
+
+# Copy configuration and notification files to the distribution root
 if [ -f "../GcpvWatcher.App/appconfig.json" ]; then
-    cp "../GcpvWatcher.App/appconfig.json" "$APP_NAME/appconfig.json"
-    echo "✅ Configuration file copied to distribution"
+    cp "../GcpvWatcher.App/appconfig.json" "appconfig.json"
+    echo "✅ Configuration file copied to distribution root"
 fi
 
 if [ -f "../GcpvWatcher.App/etc/notification.mp3" ]; then
-    mkdir -p "$APP_NAME/etc"
-    cp "../GcpvWatcher.App/etc/notification.mp3" "$APP_NAME/etc/notification.mp3"
-    echo "✅ Notification sound file copied to distribution"
+    mkdir -p "etc"
+    cp "../GcpvWatcher.App/etc/notification.mp3" "etc/notification.mp3"
+    echo "✅ Notification sound file copied to distribution root"
 fi
 
 # Create a README for the distribution
@@ -92,6 +98,12 @@ How to Run:
 4. Click "Start Watching" to begin monitoring
 5. The application will automatically process files matching the pattern
 
+Files included:
+- GcpvWatcher.exe (main application)
+- appconfig.json (configuration file)
+- etc/notification.mp3 (notification sound)
+- README.txt (this file)
+
 Features:
 - Real-time file monitoring for GCPV export files
 - Automatic race data extraction and conversion
@@ -102,18 +114,14 @@ Features:
 Built: $(date)
 EOF
 
-# Create a simple batch file to run the application
-cat > run.bat << EOF
-@echo off
-echo Starting GcpvWatcher...
-GcpvWatcher.exe
-pause
-EOF
+# No batch file needed - executable can be run directly
 
 # Create the zip file
 echo "📦 Creating distribution package..."
 cd ..
-zip -r "$ZIP_NAME" "$DIST_DIR"
+cd "$DIST_DIR"
+zip -r "../$ZIP_NAME" .
+cd ..
 
 # Display results
 echo ""
@@ -127,4 +135,4 @@ echo ""
 echo "🚀 To test the distribution:"
 echo "   1. Extract $ZIP_NAME"
 echo "   2. Navigate to the extracted folder"
-echo "   3. Double-click GcpvWatcher.exe or run.bat"
+echo "   3. Double-click GcpvWatcher.exe"
