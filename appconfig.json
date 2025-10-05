@@ -1,5 +1,6 @@
 {
   "GcpvExportFilePattern": "Race*.csv",
+  "NotificationSoundPath": "etc/notification.mp3",
   "KeyFields": {
     "track_params": {
       "key": "Event :",

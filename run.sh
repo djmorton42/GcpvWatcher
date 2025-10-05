@@ -20,6 +20,21 @@ else
     echo "❌ Warning: appconfig.json not found in project root"
 fi
 
+# Copy notification sound file to application directory
+echo "🔊 Copying notification sound file..."
+if [ -f "../etc/notification.mp3" ]; then
+    mkdir -p "etc"
+    cp "../etc/notification.mp3" "etc/notification.mp3"
+    echo "✅ Notification sound file copied successfully"
+    
+    # Also copy to the output directory where the executable runs
+    mkdir -p "bin/Release/net9.0/etc"
+    cp "../etc/notification.mp3" "bin/Release/net9.0/etc/notification.mp3"
+    echo "✅ Notification sound file copied to output directory"
+else
+    echo "❌ Warning: etc/notification.mp3 not found in project root"
+fi
+
 # Build the application
 echo "📦 Building application..."
 dotnet build --configuration Release

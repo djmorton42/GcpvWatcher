@@ -19,6 +19,7 @@ public class FileWatcherService : IDisposable
     private Timer? _cleanupTimer;
     private Dictionary<int, Racer> _racers = new Dictionary<int, Racer>();
     private readonly HashSet<string> _filesProcessedDuringStartup = new HashSet<string>();
+    private SoundNotificationService? _soundNotificationService;
 
     public event EventHandler<string>? FileProcessed;
     public event EventHandler<string>? ErrorOccurred;
@@ -45,6 +46,16 @@ public class FileWatcherService : IDisposable
         _evtFileManager.RacesUpdated += OnRacesUpdated;
         _raceDataConverter = new RaceDataConverter();
         _processedFiles = new Dictionary<string, DateTime>();
+        
+        // Initialize sound notification service if path is configured
+        if (!string.IsNullOrEmpty(_config.NotificationSoundPath))
+        {
+            var soundPath = Path.IsPathRooted(_config.NotificationSoundPath) 
+                ? _config.NotificationSoundPath 
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _config.NotificationSoundPath);
+            
+            _soundNotificationService = new SoundNotificationService(soundPath);
+        }
     }
 
     public async Task StartWatchingAsync()
@@ -341,10 +352,14 @@ public class FileWatcherService : IDisposable
         if (trulyNewFile)
         {
             WatcherLogger.Log($"New file detected: \"{fileName}\"");
+            // Play notification sound for new files
+            _soundNotificationService?.PlayNotificationSound();
         }
         else if (isFileChange || isNewFile)
         {
             WatcherLogger.Log($"File changed: \"{fileName}\"");
+            // Play notification sound for file changes
+            _soundNotificationService?.PlayNotificationSound();
         }
 
         // Wait a bit to ensure file is fully written
@@ -367,6 +382,9 @@ public class FileWatcherService : IDisposable
     {
         var fileName = Path.GetFileName(e.FullPath);
         WatcherLogger.Log($"File deleted: \"{fileName}\"");
+        
+        // Play notification sound for file deletions
+        _soundNotificationService?.PlayNotificationSound();
         
         try
         {
@@ -468,6 +486,7 @@ public class FileWatcherService : IDisposable
             StopWatching();
             _cleanupTimer?.Dispose();
             _evtFileManager?.Dispose();
+            _soundNotificationService?.Dispose();
             _disposed = true;
         }
     }

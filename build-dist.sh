@@ -32,6 +32,21 @@ else
     echo "❌ Warning: appconfig.json not found in project root"
 fi
 
+# Copy notification sound file to application directory
+echo "🔊 Copying notification sound file..."
+if [ -f "../etc/notification.mp3" ]; then
+    mkdir -p "etc"
+    cp "../etc/notification.mp3" "etc/notification.mp3"
+    echo "✅ Notification sound file copied successfully"
+    
+    # Also copy to the output directory where the executable runs
+    mkdir -p "bin/Release/net9.0/etc"
+    cp "../etc/notification.mp3" "bin/Release/net9.0/etc/notification.mp3"
+    echo "✅ Notification sound file copied to output directory"
+else
+    echo "❌ Warning: etc/notification.mp3 not found in project root"
+fi
+
 # Build for Windows x64 with self-contained deployment
 echo "🔨 Building for Windows x64..."
 dotnet publish \
@@ -43,9 +58,21 @@ dotnet publish \
     -p:PublishTrimmed=true \
     -p:IncludeNativeLibrariesForSelfExtract=true
 
-# Create additional distribution files
-echo "📝 Creating distribution files..."
+# Copy additional files to distribution directory
+echo "📝 Copying additional files to distribution..."
 cd "../$DIST_DIR"
+
+# Copy configuration and notification files to the distribution
+if [ -f "../GcpvWatcher.App/appconfig.json" ]; then
+    cp "../GcpvWatcher.App/appconfig.json" "$APP_NAME/appconfig.json"
+    echo "✅ Configuration file copied to distribution"
+fi
+
+if [ -f "../GcpvWatcher.App/etc/notification.mp3" ]; then
+    mkdir -p "$APP_NAME/etc"
+    cp "../GcpvWatcher.App/etc/notification.mp3" "$APP_NAME/etc/notification.mp3"
+    echo "✅ Notification sound file copied to distribution"
+fi
 
 # Create a README for the distribution
 cat > README.txt << EOF

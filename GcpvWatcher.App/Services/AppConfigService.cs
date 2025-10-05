@@ -62,6 +62,7 @@ public class AppConfigService
         return new AppConfig
         {
             GcpvExportFilePattern = dto.GcpvExportFilePattern,
+            NotificationSoundPath = dto.NotificationSoundPath,
             KeyFields = keyFields
         };
     }

@@ -9,12 +9,18 @@ public class AppConfig
 
     [JsonPropertyName("KeyFields")]
     public Dictionary<string, KeyFieldConfig> KeyFields { get; set; } = new();
+
+    [JsonPropertyName("NotificationSoundPath")]
+    public string? NotificationSoundPath { get; set; }
 }
 
 public class AppConfigDto
 {
     [JsonPropertyName("GcpvExportFilePattern")]
     public string GcpvExportFilePattern { get; set; } = string.Empty;
+
+    [JsonPropertyName("NotificationSoundPath")]
+    public string? NotificationSoundPath { get; set; }
 
     [JsonPropertyName("KeyFields")]
     public Dictionary<string, KeyFieldConfigDto> KeyFields { get; set; } = new();
