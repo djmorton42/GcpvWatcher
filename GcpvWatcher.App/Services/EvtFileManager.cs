@@ -249,6 +249,9 @@ public class EvtFileManager : IDisposable
 
         if (stats.RacesRemoved > 0)
         {
+            // Log the removal to WatcherLogger
+            WatcherLogger.Log($"Cleaned up orphaned races: {stats.GetDetailedString()}");
+            
             // Write updated races to EVT file
             await WriteAllRacesToEvtFileAsync();
             

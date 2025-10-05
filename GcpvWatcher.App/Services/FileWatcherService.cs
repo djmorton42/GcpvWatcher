@@ -16,6 +16,7 @@ public class FileWatcherService : IDisposable
     private readonly Dictionary<string, DateTime> _processedFiles;
     private readonly object _lockObject = new object();
     private bool _disposed = false;
+    private Timer? _cleanupTimer;
 
     public event EventHandler<string>? FileProcessed;
     public event EventHandler<string>? ErrorOccurred;
@@ -280,6 +281,17 @@ public class FileWatcherService : IDisposable
         try
         {
             await RemoveRacesFromFileAsync(e.FullPath);
+            
+            // Cancel any existing cleanup timer and start a new one
+            // This batches multiple file deletions together
+            _cleanupTimer?.Dispose();
+            _cleanupTimer = new Timer(async _ =>
+            {
+                await CleanupOrphanedRacesAsync();
+                _cleanupTimer?.Dispose();
+                _cleanupTimer = null;
+            }, null, 200, Timeout.Infinite);
+            
             FileProcessed?.Invoke(this, e.FullPath);
         }
         catch (Exception ex)
@@ -364,6 +376,7 @@ public class FileWatcherService : IDisposable
         if (!_disposed)
         {
             StopWatching();
+            _cleanupTimer?.Dispose();
             _evtFileManager?.Dispose();
             _disposed = true;
         }
