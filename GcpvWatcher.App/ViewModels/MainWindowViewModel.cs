@@ -221,7 +221,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             ((RelayCommand)BrowseWatchDirectoryCommand).RaiseCanExecuteChanged();
             ((RelayCommand)BrowseFinishLynxDirectoryCommand).RaiseCanExecuteChanged();
             
-            WatcherLogger.Log("File watching started successfully");
+            ApplicationLogger.Log("File watching started successfully");
         }
         catch (Exception ex)
         {

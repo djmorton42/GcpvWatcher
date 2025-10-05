@@ -59,7 +59,7 @@ public class FileWatcherService : IDisposable
         _fileWatcher.Deleted += OnFileDeleted;
         _fileWatcher.Error += OnError;
 
-        WatcherLogger.Log($"Started watching directory: {_watchDirectory} for pattern: {_config.GcpvExportFilePattern}");
+        WatcherLogger.Log($"Started watching: {_watchDirectory} for pattern: {_config.GcpvExportFilePattern}");
         
         // Process existing files immediately
         ProcessExistingFiles();
@@ -215,7 +215,7 @@ public class FileWatcherService : IDisposable
             return;
         }
 
-        WatcherLogger.Log($"Processing file: {filePath}");
+        WatcherLogger.Log($"Processing file: \"{Path.GetFileName(filePath)}\"");
 
         // Create data provider for the file
         var dataProvider = new GcpvExportDataFileProvider(filePath);
