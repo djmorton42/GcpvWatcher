@@ -112,8 +112,6 @@ public class FileWatcherService : IDisposable
                 WatcherLogger.Log("EVT file exists but appears to be empty, starting with empty race list");
                 return;
             }
-
-            WatcherLogger.Log("Loading existing races from EVT file...");
             
             // Use a timeout to prevent hanging
             var loadTask = Task.Run(async () =>
@@ -130,8 +128,6 @@ public class FileWatcherService : IDisposable
             }
             
             var existingRaces = loadTask.Result;
-            WatcherLogger.Log("EVT file parsing completed");
-
             var racesList = existingRaces.ToList();
             
             if (racesList.Count > 0)
