@@ -32,7 +32,7 @@ public class FileWatcherService : IDisposable
         _processedFiles = new Dictionary<string, DateTime>();
     }
 
-    public void StartWatching()
+    public async Task StartWatchingAsync()
     {
         if (_fileWatcher != null)
             return;
@@ -81,8 +81,75 @@ public class FileWatcherService : IDisposable
 
         WatcherLogger.Log($"Started watching: {_watchDirectory} for pattern: {_config.GcpvExportFilePattern}");
         
+        // Load existing races from EVT file first
+        await LoadExistingRacesFromEvtFileAsync();
+        
         // Process existing files immediately
         ProcessExistingFiles();
+    }
+
+    public void StartWatching()
+    {
+        StartWatchingAsync().Wait();
+    }
+
+    private async Task LoadExistingRacesFromEvtFileAsync()
+    {
+        try
+        {
+            var lynxEvtFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt");
+            
+            if (!File.Exists(lynxEvtFilePath))
+            {
+                WatcherLogger.Log("No existing EVT file found, starting with empty race list");
+                return;
+            }
+
+            // Check if file is empty or very small
+            var fileInfo = new FileInfo(lynxEvtFilePath);
+            if (fileInfo.Length < 10) // Less than 10 bytes, likely empty
+            {
+                WatcherLogger.Log("EVT file exists but appears to be empty, starting with empty race list");
+                return;
+            }
+
+            WatcherLogger.Log("Loading existing races from EVT file...");
+            
+            // Use a timeout to prevent hanging
+            var loadTask = Task.Run(async () =>
+            {
+                var dataProvider = new EventDataFileProvider(lynxEvtFilePath);
+                var parser = new EvtParser(dataProvider);
+                return await parser.ParseAsync();
+            });
+            
+            if (!loadTask.Wait(TimeSpan.FromSeconds(5))) // 5 second timeout
+            {
+                WatcherLogger.Log("EVT file parsing timed out, starting with empty race list");
+                return;
+            }
+            
+            var existingRaces = loadTask.Result;
+            WatcherLogger.Log("EVT file parsing completed");
+
+            var racesList = existingRaces.ToList();
+            
+            if (racesList.Count > 0)
+            {
+                // Load the races directly into the EvtFileManager without triggering the loading logic
+                _evtFileManager.SetExistingRaces(racesList);
+                WatcherLogger.Log($"Loaded {racesList.Count} existing races from EVT file");
+            }
+            else
+            {
+                WatcherLogger.Log("EVT file exists but contains no races");
+            }
+        }
+        catch (Exception ex)
+        {
+            WatcherLogger.Log($"Error loading existing races from EVT file: {ex.Message}");
+            // Continue with empty race list - don't fail startup
+        }
     }
 
     public void StopWatching()

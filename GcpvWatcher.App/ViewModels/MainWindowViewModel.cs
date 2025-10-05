@@ -193,7 +193,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    private void StartWatching()
+    private async void StartWatching()
     {
         try
         {
@@ -208,7 +208,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
             _fileWatcherService.RacesUpdated += OnRacesUpdated;
 
-            _fileWatcherService.StartWatching();
+            await _fileWatcherService.StartWatchingAsync();
             
             _isWatching = true;
             Status = "Watching";
@@ -359,7 +359,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         });
     }
 
-    private void RestartWatching()
+    private async void RestartWatching()
     {
         try
         {
@@ -377,7 +377,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 _fileWatcherService.FileProcessed += OnFileProcessed;
                 _fileWatcherService.ErrorOccurred += OnErrorOccurred;
                 _fileWatcherService.RacesUpdated += OnRacesUpdated;
-                _fileWatcherService.StartWatching();
+                await _fileWatcherService.StartWatchingAsync();
                 
                 ApplicationLogger.Log($"Now watching directory: {_watchDirectory}");
             }

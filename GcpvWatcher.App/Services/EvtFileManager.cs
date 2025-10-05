@@ -69,6 +69,20 @@ public class EvtFileManager : IDisposable
         }
     }
 
+    /// <summary>
+    /// Sets existing races from EVT file without triggering the loading logic
+    /// </summary>
+    /// <param name="races">The races to set</param>
+    public void SetExistingRaces(IEnumerable<Race> races)
+    {
+        lock (_lockObject)
+        {
+            var racesList = races?.ToList() ?? new List<Race>();
+            _fileRaces["evt_file_races"] = racesList;
+            _hasLoadedExistingRaces = true;
+        }
+    }
+
     public async Task<RaceProcessingStats> UpdateRacesFromFileAsync(string sourceFilePath, IEnumerable<Race> races)
     {
         if (string.IsNullOrWhiteSpace(sourceFilePath))
