@@ -109,14 +109,14 @@ public class EvtFileManager : IDisposable
                 _hasLoadedExistingRaces = true;
             }
             
-            // Get existing races from EVT file for comparison
-            var evtRaces = _fileRaces.ContainsKey("evt_file_races") 
-                ? _fileRaces["evt_file_races"] 
+            // Get previous races from this specific file for comparison
+            var previousFileRaces = _fileRaces.ContainsKey(sourceFilePath) 
+                ? _fileRaces[sourceFilePath] 
                 : new List<Race>();
             
-            // Create dictionary of EVT races for comparison
+            // Create dictionary of previous races from this file for comparison
             var existingRacesDict = new Dictionary<string, Race>();
-            foreach (var race in evtRaces)
+            foreach (var race in previousFileRaces)
             {
                 existingRacesDict[race.RaceNumber] = race;
             }

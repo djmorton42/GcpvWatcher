@@ -186,6 +186,12 @@ public class FileWatcherService : IDisposable
             {
                 try
                 {
+                    // Add to processed files history so they're not considered "new" later
+                    lock (_lockObject)
+                    {
+                        _processedFiles[filePath] = DateTime.Now;
+                    }
+                    
                     await ProcessFileAsync(filePath);
                     FileProcessed?.Invoke(this, filePath);
                 }
@@ -215,7 +221,12 @@ public class FileWatcherService : IDisposable
         if (e.ChangeType != WatcherChangeTypes.Created && e.ChangeType != WatcherChangeTypes.Changed)
             return;
 
-        // Debounce file changes - ignore if we've processed this file recently
+        var fileName = Path.GetFileName(e.FullPath);
+        var isNewFile = e.ChangeType == WatcherChangeTypes.Created;
+        var isFileChange = e.ChangeType == WatcherChangeTypes.Changed;
+
+        // Check if this is truly a new file or just a modification
+        bool trulyNewFile = false;
         lock (_lockObject)
         {
             if (_processedFiles.TryGetValue(e.FullPath, out var lastProcessed))
@@ -224,8 +235,25 @@ public class FileWatcherService : IDisposable
                 {
                     return; // Skip if processed within last 2 seconds
                 }
+                // File was processed before, so it's not truly new
+                trulyNewFile = false;
+            }
+            else
+            {
+                // File was never processed before, so it's truly new
+                trulyNewFile = isNewFile;
             }
             _processedFiles[e.FullPath] = DateTime.Now;
+        }
+
+        // Log the nature of the file change (only once per file due to debouncing)
+        if (trulyNewFile)
+        {
+            WatcherLogger.Log($"New file detected: \"{fileName}\"");
+        }
+        else if (isFileChange || isNewFile)
+        {
+            WatcherLogger.Log($"File changed: \"{fileName}\"");
         }
 
         // Wait a bit to ensure file is fully written
@@ -246,6 +274,9 @@ public class FileWatcherService : IDisposable
 
     private async void OnFileDeleted(object sender, FileSystemEventArgs e)
     {
+        var fileName = Path.GetFileName(e.FullPath);
+        WatcherLogger.Log($"File deleted: \"{fileName}\"");
+        
         try
         {
             await RemoveRacesFromFileAsync(e.FullPath);
