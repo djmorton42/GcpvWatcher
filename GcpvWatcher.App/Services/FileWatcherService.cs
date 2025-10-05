@@ -18,6 +18,7 @@ public class FileWatcherService : IDisposable
     private bool _disposed = false;
     private Timer? _cleanupTimer;
     private Dictionary<int, Racer> _racers = new Dictionary<int, Racer>();
+    private readonly HashSet<string> _filesProcessedDuringStartup = new HashSet<string>();
 
     public event EventHandler<string>? FileProcessed;
     public event EventHandler<string>? ErrorOccurred;
@@ -274,6 +275,7 @@ public class FileWatcherService : IDisposable
                     lock (_lockObject)
                     {
                         _processedFiles[filePath] = DateTime.Now;
+                        _filesProcessedDuringStartup.Add(filePath);
                     }
                     
                     await ProcessFileAsync(filePath);
@@ -319,13 +321,18 @@ public class FileWatcherService : IDisposable
                 {
                     return; // Skip if processed within last 2 seconds
                 }
-                // File was processed before, so it's not truly new
-                trulyNewFile = false;
+                // File was processed before - consider it truly new if:
+                // 1. It was NOT processed during startup (to avoid false positives) AND
+                // 2. Either it's a Created event OR it's a Changed event but the file is very recent
+                var fileAge = DateTime.Now - File.GetCreationTime(e.FullPath);
+                var isRecentFile = fileAge < TimeSpan.FromMinutes(1); // File created within last minute
+                trulyNewFile = !_filesProcessedDuringStartup.Contains(e.FullPath) && 
+                              (isNewFile || (isFileChange && isRecentFile));
             }
             else
             {
                 // File was never processed before, so it's truly new
-                trulyNewFile = isNewFile;
+                trulyNewFile = true;
             }
             _processedFiles[e.FullPath] = DateTime.Now;
         }
