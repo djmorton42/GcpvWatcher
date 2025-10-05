@@ -319,7 +319,7 @@ public class FileWatcherService : IDisposable
 
         // Log statistics to both loggers
         var fileName = Path.GetFileName(filePath);
-        var userMessage = $"Processed \"{fileName}\": {stats}";
+        var userMessage = $"Processed \"{fileName}\": {stats.GetDetailedString()}";
         var detailedMessage = $"File: {fileName} - Added: {stats.RacesAdded}, Updated: {stats.RacesUpdated}, Unchanged: {stats.RacesUnchanged}, Removed: {stats.RacesRemoved}";
         
         WatcherLogger.Log(userMessage);

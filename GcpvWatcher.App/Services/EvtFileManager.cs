@@ -145,14 +145,17 @@ public class EvtFileManager : IDisposable
                 if (!existingRacesDict.ContainsKey(currentRace.RaceNumber))
                 {
                     stats.RacesAdded++;
+                    stats.AddedRaceNumbers.Add(currentRace.RaceNumber);
                 }
                 else if (!AreRacesEqual(existingRacesDict[currentRace.RaceNumber], currentRace))
                 {
                     stats.RacesUpdated++;
+                    stats.UpdatedRaceNumbers.Add(currentRace.RaceNumber);
                 }
                 else
                 {
                     stats.RacesUnchanged++;
+                    stats.UnchangedRaceNumbers.Add(currentRace.RaceNumber);
                 }
             }
 
@@ -166,6 +169,7 @@ public class EvtFileManager : IDisposable
                     if (!currentRacesDict.ContainsKey(previousRace.RaceNumber))
                     {
                         stats.RacesRemoved++;
+                        stats.RemovedRaceNumbers.Add(previousRace.RaceNumber);
                     }
                 }
             }
@@ -239,6 +243,7 @@ public class EvtFileManager : IDisposable
                 
                 _fileRaces["evt_file_races"] = updatedEvtRaces;
                 stats.RacesRemoved = orphanedRaces.Count;
+                stats.RemovedRaceNumbers.AddRange(orphanedRaces.Select(r => r.RaceNumber));
             }
         }
 
