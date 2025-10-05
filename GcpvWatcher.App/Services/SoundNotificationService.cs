@@ -45,7 +45,7 @@ public class SoundNotificationService : IDisposable
                     {
                         PlayAudioFile(_notificationSoundPath);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         // Silently fail - sound notification is not critical
                     }
@@ -53,7 +53,7 @@ public class SoundNotificationService : IDisposable
 
                 _lastPlayTime = now;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Silently fail - sound notification is not critical
             }
@@ -117,7 +117,7 @@ public class SoundNotificationService : IDisposable
                 throw new PlatformNotSupportedException("Audio playback not supported on this platform");
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Silently fail - sound notification is not critical
             throw;
