@@ -81,18 +81,10 @@ jobs:
           git push origin ${{ steps.bump.outputs.version }}
 
       - name: Create GitHub release
-        id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.bump.outputs.version }}
-          release_name: Release ${{ steps.bump.outputs.version }}
+          name: Release ${{ steps.bump.outputs.version }}
+          files: ${{ steps.rename_zip.outputs.zip_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.rename_zip.outputs.zip_name }}
-          asset_name: ${{ steps.rename_zip.outputs.zip_name }}
-          asset_content_type: application/zip
