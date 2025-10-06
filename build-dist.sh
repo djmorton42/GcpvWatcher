@@ -10,10 +10,9 @@ echo "====================================="
 
 # Configuration
 APP_NAME="GcpvWatcher"
-VERSION="1.0.0"
 DIST_DIR="dist"
 WINDOWS_RUNTIME="win-x64"
-ZIP_NAME="${APP_NAME}-v${VERSION}-${WINDOWS_RUNTIME}.zip"
+ZIP_NAME="${APP_NAME}-${WINDOWS_RUNTIME}.zip"
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
@@ -80,39 +79,7 @@ if [ -f "../GcpvWatcher.App/etc/notification.mp3" ]; then
     echo "✅ Notification sound file copied to distribution root"
 fi
 
-# Create a README for the distribution
-cat > README.txt << EOF
-GcpvWatcher v${VERSION}
-=====================
-
-This is a Windows desktop file watcher application for GCPV export files built with Avalonia UI.
-
-System Requirements:
-- Windows 10 or later
-- No additional dependencies required (self-contained)
-
-How to Run:
-1. Double-click on GcpvWatcher.exe
-2. Select the watch directory (where GCPV export files are placed)
-3. Select the FinishLynx directory (where Lynx.evt file is located)
-4. Click "Start Watching" to begin monitoring
-5. The application will automatically process files matching the pattern
-
-Files included:
-- GcpvWatcher.exe (main application)
-- appconfig.json (configuration file)
-- etc/notification.mp3 (notification sound)
-- README.txt (this file)
-
-Features:
-- Real-time file monitoring for GCPV export files
-- Automatic race data extraction and conversion
-- EVT file generation for FinishLynx
-- Clean, modern UI
-- No installation required
-
-Built: $(date)
-EOF
+# README files are excluded from distribution
 
 # No batch file needed - executable can be run directly
 
@@ -120,7 +87,7 @@ EOF
 echo "📦 Creating distribution package..."
 cd ..
 cd "$DIST_DIR"
-zip -r "../$ZIP_NAME" .
+zip -r "../$ZIP_NAME" . -x "README*"
 cd ..
 
 # Display results

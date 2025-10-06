@@ -1,0 +1,92 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed for pushing tags and creating releases
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required to get tags
+
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Calculate next version
+        id: bump
+        run: |
+          bump_type=${{ github.event.inputs.bump }}
+          current=${{ steps.get_tag.outputs.tag }}
+          current=${current#v}
+
+          IFS='.' read -r major minor patch <<< "$current"
+
+          case $bump_type in
+            major)
+              ((major++)); minor=0; patch=0 ;;
+            minor)
+              ((minor++)); patch=0 ;;
+            patch)
+              ((patch++)) ;;
+          esac
+
+          new_version="v$major.$minor.$patch"
+          echo "New version: $new_version"
+          echo "version=$new_version" >> $GITHUB_OUTPUT
+
+      - name: Build project
+        run: |
+          chmod +x build-dist.sh
+          ./build-dist.sh
+
+      - name: Rename zip file with version
+        run: |
+          VERSION_WITHOUT_V=${{ steps.bump.outputs.version }}
+          VERSION_WITHOUT_V=${VERSION_WITHOUT_V#v}
+          mv GcpvWatcher-win-x64.zip "GcpvWatcher-v${VERSION_WITHOUT_V}-win-x64.zip"
+          echo "zip_name=GcpvWatcher-v${VERSION_WITHOUT_V}-win-x64.zip" >> $GITHUB_OUTPUT
+        id: rename_zip
+
+      - name: Create new tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a ${{ steps.bump.outputs.version }} -m "Release ${{ steps.bump.outputs.version }}"
+          git push origin ${{ steps.bump.outputs.version }}
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.bump.outputs.version }}
+          release_name: Release ${{ steps.bump.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.rename_zip.outputs.zip_name }}
+          asset_name: ${{ steps.rename_zip.outputs.zip_name }}
+          asset_content_type: application/zip
