@@ -43,11 +43,17 @@ jobs:
 
           case $bump_type in
             major)
-              ((major++)); minor=0; patch=0 ;;
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
             minor)
-              ((minor++)); patch=0 ;;
+              minor=$((minor + 1))
+              patch=0
+              ;;
             patch)
-              ((patch++)) ;;
+              patch=$((patch + 1))
+              ;;
           esac
 
           new_version="v$major.$minor.$patch"
