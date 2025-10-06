@@ -54,7 +54,6 @@ dotnet publish \
     --self-contained true \
     --output "../$DIST_DIR" \
     -p:PublishSingleFile=true \
-    -p:PublishTrimmed=true \
     -p:IncludeNativeLibrariesForSelfExtract=true \
     -p:AssemblyName=GcpvWatcher
 
