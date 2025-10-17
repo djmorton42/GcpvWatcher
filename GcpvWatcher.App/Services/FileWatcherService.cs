@@ -378,7 +378,7 @@ public class FileWatcherService : IDisposable
         }
     }
 
-    private async void OnFileDeleted(object sender, FileSystemEventArgs e)
+    private void OnFileDeleted(object sender, FileSystemEventArgs e)
     {
         var fileName = Path.GetFileName(e.FullPath);
         WatcherLogger.Log($"File deleted: \"{fileName}\"");
@@ -393,7 +393,7 @@ public class FileWatcherService : IDisposable
             // Cancel any existing cleanup timer and start a new one
             // This batches multiple file deletions together
             _cleanupTimer?.Dispose();
-            _cleanupTimer = new Timer(async _ =>
+            _cleanupTimer = new Timer(_ =>
             {
                 CleanupOrphanedRaces();
                 _cleanupTimer?.Dispose();
@@ -427,7 +427,7 @@ public class FileWatcherService : IDisposable
         return _evtFileManager.GetAllRaces();
     }
 
-    private async Task CleanupOrphanedRaces()
+    private void CleanupOrphanedRaces()
     {
         try
         {
@@ -473,7 +473,7 @@ public class FileWatcherService : IDisposable
         ApplicationLogger.Log(detailedMessage);
     }
 
-    private async Task RemoveRacesFromFile(string filePath)
+    private void RemoveRacesFromFile(string filePath)
     {
         ApplicationLogger.Log($"Removing races from deleted file: {filePath}");
         _evtFileManager.RemoveRacesFromFile(filePath);
