@@ -17,7 +17,6 @@ public class EvtFileManager : IDisposable
     private readonly string _lynxEvtFilePath;
     private readonly Dictionary<string, List<Race>> _fileRaces; // Maps source file path to races
     private readonly object _lockObject = new object();
-    private readonly object _backupLockObject = new object();
     private bool _disposed = false;
     private string _lastFinishLynxDirectory; // Track directory changes
     private bool _hasLoadedExistingRaces = false; // Track if we've already loaded existing races
@@ -300,62 +299,58 @@ public class EvtFileManager : IDisposable
             return; // No existing EVT file to backup
         }
 
-        // Use a separate lock for backup operations to avoid blocking the main EVT operations
-        lock (_backupLockObject)
+        try
         {
-            try
+            // Double-check file still exists
+            if (!File.Exists(_lynxEvtFilePath))
             {
-                // Double-check file still exists after acquiring lock
-                if (!File.Exists(_lynxEvtFilePath))
-                {
-                    return; // File was deleted while waiting for lock
-                }
-
-                // Create backup directory if it doesn't exist
-                var backupDirectory = Path.Combine(_finishLynxDirectory, _config.EvtBackupDirectory);
-                if (!Directory.Exists(backupDirectory))
-                {
-                    Directory.CreateDirectory(backupDirectory);
-                    ApplicationLogger.Log($"Created backup directory: {backupDirectory}");
-                }
-
-                // Generate timestamp in YYYYMMDD_HHMMSS format
-                var timestamp = GetCurrentTimestamp();
-                var baseFileName = $"Lynx.evt.{timestamp}";
-                var backupFilePath = Path.Combine(backupDirectory, baseFileName);
-
-                // If file already exists, add a unique suffix
-                var counter = 1;
-                while (File.Exists(backupFilePath))
-                {
-                    var fileNameWithSuffix = $"{baseFileName}.{counter}";
-                    backupFilePath = Path.Combine(backupDirectory, fileNameWithSuffix);
-                    counter++;
-                }
-
-                // Use File.Copy for atomic operation - this is safer on Windows
-                // File.Copy handles file locking internally and won't cause directory locking issues
-                File.Copy(_lynxEvtFilePath, backupFilePath, true);
-
-                var finalFileName = Path.GetFileName(backupFilePath);
-                ApplicationLogger.Log($"Created EVT backup: {finalFileName}");
+                return; // File was deleted
             }
-            catch (Exception ex)
+
+            // Create backup directory if it doesn't exist
+            var backupDirectory = Path.Combine(_finishLynxDirectory, _config.EvtBackupDirectory);
+            if (!Directory.Exists(backupDirectory))
             {
-                ApplicationLogger.LogException("Error creating EVT backup", ex);
-                // Don't throw - backup failure shouldn't prevent EVT file updates
+                Directory.CreateDirectory(backupDirectory);
+                ApplicationLogger.Log($"Created backup directory: {backupDirectory}");
             }
+
+            // Generate timestamp in YYYYMMDD_HHMMSS format
+            var timestamp = GetCurrentTimestamp();
+            var baseFileName = $"Lynx.evt.{timestamp}";
+            var backupFilePath = Path.Combine(backupDirectory, baseFileName);
+
+            // If file already exists, add a unique suffix
+            var counter = 1;
+            while (File.Exists(backupFilePath))
+            {
+                var fileNameWithSuffix = $"{baseFileName}.{counter}";
+                backupFilePath = Path.Combine(backupDirectory, fileNameWithSuffix);
+                counter++;
+            }
+
+            // Use File.Copy for atomic operation - this is safer on Windows
+            // File.Copy handles file locking internally and won't cause directory locking issues
+            File.Copy(_lynxEvtFilePath, backupFilePath, true);
+
+            var finalFileName = Path.GetFileName(backupFilePath);
+            ApplicationLogger.Log($"Created EVT backup: {finalFileName}");
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error creating EVT backup", ex);
+            // Don't throw - backup failure shouldn't prevent EVT file updates
         }
     }
 
     private void WriteRacesToEvtFile(IEnumerable<Race> races)
     {
-        // Create backup before writing (this has its own lock)
-        CreateBackupIfEvtFileExists();
-        
         // Use the main lock to ensure only one thread writes to the EVT file at a time
         lock (_lockObject)
         {
+            // Create backup before writing (now inside the main lock)
+            CreateBackupIfEvtFileExists();
+            
             var evtContent = GenerateEvtContent(races);
             var encoding = AppConfigService.GetOutputEncoding(_config.OutputEncoding);
             
