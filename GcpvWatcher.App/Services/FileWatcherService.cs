@@ -42,7 +42,7 @@ public class FileWatcherService : IDisposable
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _watchDirectory = watchDirectory ?? throw new ArgumentNullException(nameof(watchDirectory));
         _finishLynxDirectory = finishLynxDirectory ?? throw new ArgumentNullException(nameof(finishLynxDirectory));
-        _evtFileManager = new EvtFileManager(_finishLynxDirectory);
+        _evtFileManager = new EvtFileManager(_finishLynxDirectory, _config);
         _evtFileManager.RacesUpdated += OnRacesUpdated;
         _raceDataConverter = new RaceDataConverter();
         _processedFiles = new Dictionary<string, DateTime>();

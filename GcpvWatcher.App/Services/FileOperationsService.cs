@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using GcpvWatcher.App.Models;
 using GcpvWatcher.App.Parsers;
 using GcpvWatcher.App.Providers;
@@ -91,8 +92,9 @@ public class FileOperationsService
     /// </summary>
     /// <param name="directoryPath">The directory containing the Lynx.evt file</param>
     /// <param name="races">The races to write</param>
+    /// <param name="config">The application configuration</param>
     /// <returns>Statistics about the race processing</returns>
-    public async Task<RaceProcessingStats> WriteRacesToLynxEvtAsync(string directoryPath, IEnumerable<Race> races)
+    public async Task<RaceProcessingStats> WriteRacesToLynxEvtAsync(string directoryPath, IEnumerable<Race> races, AppConfig config)
     {
         if (string.IsNullOrWhiteSpace(directoryPath))
             throw new ArgumentException("Directory path cannot be null or empty.", nameof(directoryPath));
@@ -100,7 +102,8 @@ public class FileOperationsService
         var filePath = Path.Combine(directoryPath, LynxEvtFileName);
         var evtContent = GenerateEvtContent(races);
         
-        await File.WriteAllTextAsync(filePath, evtContent);
+        var encoding = AppConfigService.GetOutputEncoding(config.OutputEncoding);
+        await File.WriteAllTextAsync(filePath, evtContent, encoding);
         
         // Return basic stats for direct file writing (all races are considered added)
         return new RaceProcessingStats
@@ -130,7 +133,7 @@ public class FileOperationsService
             WriteRacerLines(csv, race);
         }
 
-        return writer.ToString() + Environment.NewLine;
+        return writer.ToString();
     }
 
     private void WriteRaceInfoLine(CsvWriter csv, Race race)

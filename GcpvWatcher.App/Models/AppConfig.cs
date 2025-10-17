@@ -12,6 +12,9 @@ public class AppConfig
 
     [JsonPropertyName("NotificationSoundPath")]
     public string? NotificationSoundPath { get; set; }
+
+    [JsonPropertyName("OutputEncoding")]
+    public string OutputEncoding { get; set; } = "ascii";
 }
 
 public class AppConfigDto
@@ -24,6 +27,9 @@ public class AppConfigDto
 
     [JsonPropertyName("KeyFields")]
     public Dictionary<string, KeyFieldConfigDto> KeyFields { get; set; } = new();
+
+    [JsonPropertyName("OutputEncoding")]
+    public string OutputEncoding { get; set; } = "ascii";
 }
 
 public class KeyFieldConfigDto

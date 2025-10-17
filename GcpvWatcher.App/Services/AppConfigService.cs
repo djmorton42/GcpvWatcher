@@ -1,4 +1,5 @@
 using GcpvWatcher.App.Models;
+using System.Text;
 using System.Text.Json;
 
 namespace GcpvWatcher.App.Services;
@@ -27,7 +28,9 @@ public class AppConfigService
         if (configDto == null)
             throw new InvalidOperationException($"Failed to deserialize configuration from '{_configPath}'.");
 
-        return ConvertToAppConfig(configDto);
+        var config = ConvertToAppConfig(configDto);
+        ValidateOutputEncoding(config.OutputEncoding);
+        return config;
     }
 
     public AppConfig LoadConfig()
@@ -44,7 +47,9 @@ public class AppConfigService
         if (configDto == null)
             throw new InvalidOperationException($"Failed to deserialize configuration from '{_configPath}'.");
 
-        return ConvertToAppConfig(configDto);
+        var config = ConvertToAppConfig(configDto);
+        ValidateOutputEncoding(config.OutputEncoding);
+        return config;
     }
 
     private AppConfig ConvertToAppConfig(AppConfigDto dto)
@@ -63,7 +68,42 @@ public class AppConfigService
         {
             GcpvExportFilePattern = dto.GcpvExportFilePattern,
             NotificationSoundPath = dto.NotificationSoundPath,
+            OutputEncoding = dto.OutputEncoding,
             KeyFields = keyFields
         };
+    }
+
+    /// <summary>
+    /// Gets the encoding to use for writing EVT files based on configuration
+    /// </summary>
+    public static Encoding GetOutputEncoding(string outputEncoding)
+    {
+        if (string.IsNullOrEmpty(outputEncoding))
+            return Encoding.ASCII; // Default to ASCII for null/empty values
+            
+        return outputEncoding.ToLowerInvariant() switch
+        {
+            "utf-16" => Encoding.Unicode,
+            "utf-8" => Encoding.UTF8,
+            "ascii" => Encoding.ASCII,
+            _ => Encoding.ASCII // Default to ASCII for unknown values
+        };
+    }
+
+    /// <summary>
+    /// Validates the OutputEncoding property and throws exception if invalid
+    /// </summary>
+    private static void ValidateOutputEncoding(string outputEncoding)
+    {
+        var validEncodings = new[] { "utf-8", "utf-16", "ascii" };
+        var normalizedEncoding = outputEncoding?.ToLowerInvariant();
+        
+        if (string.IsNullOrEmpty(normalizedEncoding) || !validEncodings.Contains(normalizedEncoding))
+        {
+            var errorMessage = $"Invalid OutputEncoding value in appconfig.json. " +
+                              $"Current value: '{outputEncoding}'. " +
+                              $"Valid values are: {string.Join(", ", validEncodings)}";
+            throw new InvalidOperationException(errorMessage);
+        }
     }
 }

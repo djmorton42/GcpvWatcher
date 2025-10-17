@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using GcpvWatcher.App.Models;
 using GcpvWatcher.App.Parsers;
 using GcpvWatcher.App.Providers;
@@ -18,12 +19,14 @@ public class EvtFileManager : IDisposable
     private bool _disposed = false;
     private string _lastFinishLynxDirectory; // Track directory changes
     private bool _hasLoadedExistingRaces = false; // Track if we've already loaded existing races
+    private readonly AppConfig _config;
 
     public event EventHandler? RacesUpdated;
 
-    public EvtFileManager(string finishLynxDirectory)
+    public EvtFileManager(string finishLynxDirectory, AppConfig config)
     {
         _finishLynxDirectory = finishLynxDirectory ?? throw new ArgumentNullException(nameof(finishLynxDirectory));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
         _lynxEvtFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt");
         _fileRaces = new Dictionary<string, List<Race>>();
         _lastFinishLynxDirectory = finishLynxDirectory;
@@ -289,7 +292,8 @@ public class EvtFileManager : IDisposable
     private async Task WriteRacesToEvtFileAsync(IEnumerable<Race> races)
     {
         var evtContent = GenerateEvtContent(races);
-        await File.WriteAllTextAsync(_lynxEvtFilePath, evtContent);
+        var encoding = AppConfigService.GetOutputEncoding(_config.OutputEncoding);
+        await File.WriteAllTextAsync(_lynxEvtFilePath, evtContent, encoding);
         
         //WatcherLogger.Log($"Updated Lynx.evt with {races.Count()} races");
     }
@@ -312,7 +316,7 @@ public class EvtFileManager : IDisposable
             WriteRacerLines(csv, race);
         }
 
-        return writer.ToString() + Environment.NewLine;
+        return writer.ToString();
     }
 
     private static bool AreRacesEqual(Race race1, Race race2)
