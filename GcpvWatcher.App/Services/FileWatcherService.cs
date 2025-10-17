@@ -303,7 +303,7 @@ public class FileWatcherService : IDisposable
             ApplicationLogger.Log("Finished processing existing files");
             
             // Clean up orphaned races after processing all files
-            await CleanupOrphanedRacesAsync();
+            CleanupOrphanedRaces();
         }
         catch (Exception ex)
         {
@@ -388,14 +388,14 @@ public class FileWatcherService : IDisposable
         
         try
         {
-            await RemoveRacesFromFileAsync(e.FullPath);
+            RemoveRacesFromFile(e.FullPath);
             
             // Cancel any existing cleanup timer and start a new one
             // This batches multiple file deletions together
             _cleanupTimer?.Dispose();
             _cleanupTimer = new Timer(async _ =>
             {
-                await CleanupOrphanedRacesAsync();
+                CleanupOrphanedRaces();
                 _cleanupTimer?.Dispose();
                 _cleanupTimer = null;
             }, null, 200, Timeout.Infinite);
@@ -427,13 +427,13 @@ public class FileWatcherService : IDisposable
         return _evtFileManager.GetAllRaces();
     }
 
-    private async Task CleanupOrphanedRacesAsync()
+    private async Task CleanupOrphanedRaces()
     {
         try
         {
             // Get all active CSV files
             var activeFiles = Directory.GetFiles(_watchDirectory, _config.GcpvExportFilePattern);
-            await _evtFileManager.CleanupOrphanedRacesAsync(activeFiles);
+            _evtFileManager.CleanupOrphanedRaces(activeFiles);
         }
         catch (Exception ex)
         {
@@ -462,7 +462,7 @@ public class FileWatcherService : IDisposable
         var races = _raceDataConverter.ConvertGcpvRacesToRaces(gcpvRaces);
 
         // Update the EVT file
-        var stats = await _evtFileManager.UpdateRacesFromFileAsync(filePath, races);
+        var stats = _evtFileManager.UpdateRacesFromFile(filePath, races);
 
         // Log statistics to both loggers
         var fileName = Path.GetFileName(filePath);
@@ -473,10 +473,10 @@ public class FileWatcherService : IDisposable
         ApplicationLogger.Log(detailedMessage);
     }
 
-    private async Task RemoveRacesFromFileAsync(string filePath)
+    private async Task RemoveRacesFromFile(string filePath)
     {
         ApplicationLogger.Log($"Removing races from deleted file: {filePath}");
-        await _evtFileManager.RemoveRacesFromFileAsync(filePath);
+        _evtFileManager.RemoveRacesFromFile(filePath);
     }
 
     public void Dispose()

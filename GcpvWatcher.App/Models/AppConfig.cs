@@ -15,6 +15,9 @@ public class AppConfig
 
     [JsonPropertyName("OutputEncoding")]
     public string OutputEncoding { get; set; } = "ascii";
+
+    [JsonPropertyName("EvtBackupDirectory")]
+    public string EvtBackupDirectory { get; set; } = "backups";
 }
 
 public class AppConfigDto
@@ -30,6 +33,9 @@ public class AppConfigDto
 
     [JsonPropertyName("OutputEncoding")]
     public string OutputEncoding { get; set; } = "ascii";
+
+    [JsonPropertyName("EvtBackupDirectory")]
+    public string EvtBackupDirectory { get; set; } = "backups";
 }
 
 public class KeyFieldConfigDto

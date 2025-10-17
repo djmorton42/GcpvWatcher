@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text;
 using GcpvWatcher.App.Models;
@@ -16,6 +17,7 @@ public class EvtFileManager : IDisposable
     private readonly string _lynxEvtFilePath;
     private readonly Dictionary<string, List<Race>> _fileRaces; // Maps source file path to races
     private readonly object _lockObject = new object();
+    private readonly object _backupLockObject = new object();
     private bool _disposed = false;
     private string _lastFinishLynxDirectory; // Track directory changes
     private bool _hasLoadedExistingRaces = false; // Track if we've already loaded existing races
@@ -86,7 +88,7 @@ public class EvtFileManager : IDisposable
         }
     }
 
-    public async Task<RaceProcessingStats> UpdateRacesFromFileAsync(string sourceFilePath, IEnumerable<Race> races)
+    public RaceProcessingStats UpdateRacesFromFile(string sourceFilePath, IEnumerable<Race> races)
     {
         if (string.IsNullOrWhiteSpace(sourceFilePath))
             throw new ArgumentException("Source file path cannot be null or empty.", nameof(sourceFilePath));
@@ -202,17 +204,18 @@ public class EvtFileManager : IDisposable
             
             // Update the EVT races in memory
             _fileRaces["evt_file_races"] = updatedEvtRaces.Values.ToList();
+            
+            // Write to EVT file within the same lock to prevent lost updates
+            WriteAllRacesToEvtFile();
         }
 
-        await WriteAllRacesToEvtFileAsync();
-        
         // Notify that races have been updated
         RacesUpdated?.Invoke(this, EventArgs.Empty);
         
         return stats;
     }
 
-    public async Task CleanupOrphanedRacesAsync(IEnumerable<string> activeSourceFiles)
+    public void CleanupOrphanedRaces(IEnumerable<string> activeSourceFiles)
     {
         var activeFiles = activeSourceFiles.ToHashSet();
         var stats = new RaceProcessingStats();
@@ -247,6 +250,9 @@ public class EvtFileManager : IDisposable
                 _fileRaces["evt_file_races"] = updatedEvtRaces;
                 stats.RacesRemoved = orphanedRaces.Count;
                 stats.RemovedRaceNumbers.AddRange(orphanedRaces.Select(r => r.RaceNumber));
+                
+                // Write updated races to EVT file within the same lock
+                WriteAllRacesToEvtFile();
             }
         }
 
@@ -255,15 +261,12 @@ public class EvtFileManager : IDisposable
             // Log the removal to WatcherLogger
             WatcherLogger.Log($"Cleaned up orphaned races: {stats.GetDetailedString()}");
             
-            // Write updated races to EVT file
-            await WriteAllRacesToEvtFileAsync();
-            
             // Notify that races have been updated
             RacesUpdated?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    public async Task RemoveRacesFromFileAsync(string sourceFilePath)
+    public void RemoveRacesFromFile(string sourceFilePath)
     {
         if (string.IsNullOrWhiteSpace(sourceFilePath))
             return;
@@ -273,27 +276,101 @@ public class EvtFileManager : IDisposable
             if (_fileRaces.ContainsKey(sourceFilePath))
             {
                 _fileRaces.Remove(sourceFilePath);
+                
+                // Write updated races to EVT file within the same lock
+                WriteAllRacesToEvtFile();
             }
         }
-
-        await WriteAllRacesToEvtFileAsync();
         
         // Notify that races have been updated
         RacesUpdated?.Invoke(this, EventArgs.Empty);
     }
 
-    private async Task WriteAllRacesToEvtFileAsync()
+    private void WriteAllRacesToEvtFile()
     {
         // Use the same deduplication logic as GetAllRaces()
         var allRaces = GetAllRaces().ToList();
-        await WriteRacesToEvtFileAsync(allRaces);
+        WriteRacesToEvtFile(allRaces);
     }
 
-    private async Task WriteRacesToEvtFileAsync(IEnumerable<Race> races)
+    private void CreateBackupIfEvtFileExists()
     {
-        var evtContent = GenerateEvtContent(races);
-        var encoding = AppConfigService.GetOutputEncoding(_config.OutputEncoding);
-        await File.WriteAllTextAsync(_lynxEvtFilePath, evtContent, encoding);
+        if (!File.Exists(_lynxEvtFilePath))
+        {
+            return; // No existing EVT file to backup
+        }
+
+        // Use a separate lock for backup operations to avoid blocking the main EVT operations
+        lock (_backupLockObject)
+        {
+            try
+            {
+                // Double-check file still exists after acquiring lock
+                if (!File.Exists(_lynxEvtFilePath))
+                {
+                    return; // File was deleted while waiting for lock
+                }
+
+                // Create backup directory if it doesn't exist
+                var backupDirectory = Path.Combine(_finishLynxDirectory, _config.EvtBackupDirectory);
+                if (!Directory.Exists(backupDirectory))
+                {
+                    Directory.CreateDirectory(backupDirectory);
+                    ApplicationLogger.Log($"Created backup directory: {backupDirectory}");
+                }
+
+                // Generate timestamp in YYYYMMDD_HHMMSS format
+                var timestamp = GetCurrentTimestamp();
+                var baseFileName = $"Lynx.evt.{timestamp}";
+                var backupFilePath = Path.Combine(backupDirectory, baseFileName);
+
+                // If file already exists, add a unique suffix
+                var counter = 1;
+                while (File.Exists(backupFilePath))
+                {
+                    var fileNameWithSuffix = $"{baseFileName}.{counter}";
+                    backupFilePath = Path.Combine(backupDirectory, fileNameWithSuffix);
+                    counter++;
+                }
+
+                // Use File.Copy for atomic operation - this is safer on Windows
+                // File.Copy handles file locking internally and won't cause directory locking issues
+                File.Copy(_lynxEvtFilePath, backupFilePath, true);
+
+                var finalFileName = Path.GetFileName(backupFilePath);
+                ApplicationLogger.Log($"Created EVT backup: {finalFileName}");
+            }
+            catch (Exception ex)
+            {
+                ApplicationLogger.LogException("Error creating EVT backup", ex);
+                // Don't throw - backup failure shouldn't prevent EVT file updates
+            }
+        }
+    }
+
+    private void WriteRacesToEvtFile(IEnumerable<Race> races)
+    {
+        // Create backup before writing (this has its own lock)
+        CreateBackupIfEvtFileExists();
+        
+        // Use the main lock to ensure only one thread writes to the EVT file at a time
+        lock (_lockObject)
+        {
+            var evtContent = GenerateEvtContent(races);
+            var encoding = AppConfigService.GetOutputEncoding(_config.OutputEncoding);
+            
+            // Write to a unique temporary file first, then move atomically
+            // This prevents directory locking issues on Windows and avoids temp file conflicts
+            var tempFilePath = _lynxEvtFilePath + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+            using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var writer = new StreamWriter(fileStream, encoding))
+            {
+                writer.Write(evtContent);
+            }
+            
+            // Atomic move operation - this is safe on Windows and prevents partial reads
+            File.Move(tempFilePath, _lynxEvtFilePath, true);
+        }
         
         //WatcherLogger.Log($"Updated Lynx.evt with {races.Count()} races");
     }
@@ -434,6 +511,11 @@ public class EvtFileManager : IDisposable
             csv.WriteRecord(record);
             csv.NextRecord();
         }
+    }
+
+    protected virtual string GetCurrentTimestamp()
+    {
+        return DateTime.Now.ToString("yyyyMMdd_HHmmss");
     }
 
     public void Dispose()
