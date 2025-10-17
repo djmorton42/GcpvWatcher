@@ -490,4 +490,20 @@ public class FileWatcherService : IDisposable
             _disposed = true;
         }
     }
+
+    public async Task DisposeAsync()
+    {
+        if (!_disposed)
+        {
+            StopWatching();
+            
+            // Give background tasks time to complete
+            await Task.Delay(100);
+            
+            _cleanupTimer?.Dispose();
+            _evtFileManager?.Dispose();
+            _soundNotificationService?.Dispose();
+            _disposed = true;
+        }
+    }
 }

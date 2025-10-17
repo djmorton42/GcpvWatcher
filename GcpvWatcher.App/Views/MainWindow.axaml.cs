@@ -15,9 +15,12 @@ public partial class MainWindow : Window
         _viewModel.SetWindow(this);
     }
 
-    protected override void OnClosed(EventArgs e)
+    protected override async void OnClosed(EventArgs e)
     {
-        _viewModel?.Dispose();
+        if (_viewModel != null)
+        {
+            await _viewModel.DisposeAsync();
+        }
         base.OnClosed(e);
     }
 }

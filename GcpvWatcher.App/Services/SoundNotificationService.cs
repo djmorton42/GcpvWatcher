@@ -9,6 +9,7 @@ public class SoundNotificationService : IDisposable
     private DateTime _lastPlayTime = DateTime.MinValue;
     private readonly TimeSpan _debounceInterval = TimeSpan.FromSeconds(5);
     private bool _disposed = false;
+    private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
     public SoundNotificationService(string notificationSoundPath)
     {
@@ -43,13 +44,20 @@ public class SoundNotificationService : IDisposable
                 {
                     try
                     {
-                        PlayAudioFile(_notificationSoundPath);
+                        if (!_cancellationTokenSource.Token.IsCancellationRequested)
+                        {
+                            PlayAudioFile(_notificationSoundPath);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when service is being disposed
                     }
                     catch (Exception)
                     {
                         // Silently fail - sound notification is not critical
                     }
-                });
+                }, _cancellationTokenSource.Token);
 
                 _lastPlayTime = now;
             }
@@ -128,6 +136,8 @@ public class SoundNotificationService : IDisposable
     {
         if (!_disposed)
         {
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
             _disposed = true;
         }
     }

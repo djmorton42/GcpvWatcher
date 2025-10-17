@@ -262,7 +262,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     private void Close()
     {
         StopWatching();
-        System.Environment.Exit(0);
+        _window?.Close();
     }
 
     private void LoadUserPreferences()
@@ -419,6 +419,19 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         
         // Stop watching and dispose file watcher
         StopWatching();
+    }
+
+    public async Task DisposeAsync()
+    {
+        // Unsubscribe from logger events
+        WatcherLogger.LogMessage -= OnLogMessage;
+        
+        // Stop watching and dispose file watcher asynchronously
+        if (_fileWatcherService != null)
+        {
+            await _fileWatcherService.DisposeAsync();
+            _fileWatcherService = null;
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
