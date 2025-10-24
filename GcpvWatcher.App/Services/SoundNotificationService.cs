@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NAudio.Wave;
 
 namespace GcpvWatcher.App.Services;
 
@@ -53,17 +54,19 @@ public class SoundNotificationService : IDisposable
                     {
                         // Expected when service is being disposed
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // Silently fail - sound notification is not critical
+                        // Log error but don't fail - sound notification is not critical
+                        Console.WriteLine($"Sound notification failed: {ex.Message}");
                     }
                 }, _cancellationTokenSource.Token);
 
                 _lastPlayTime = now;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Silently fail - sound notification is not critical
+                // Log error but don't fail - sound notification is not critical
+                Console.WriteLine($"Sound notification failed: {ex.Message}");
             }
         }
     }
@@ -72,64 +75,97 @@ public class SoundNotificationService : IDisposable
     {
         try
         {
-            // Use platform-specific audio players
+            // Use platform-specific audio playback
             if (OperatingSystem.IsWindows())
             {
-                // On Windows, use the built-in Windows Media Player
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd",
-                    Arguments = $"/c start /min \"\" \"{filePath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
+                PlayAudioFileWithNAudio(filePath);
             }
             else if (OperatingSystem.IsMacOS())
             {
-                // On macOS, use the afplay command
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "afplay",
-                    Arguments = $"\"{filePath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
+                PlayAudioFileWithAfplay(filePath);
             }
             else if (OperatingSystem.IsLinux())
             {
-                // On Linux, try common audio players
-                var audioPlayers = new[] { "paplay", "aplay", "mpg123", "mpg321", "play" };
-                foreach (var player in audioPlayers)
-                {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = player,
-                            Arguments = $"\"{filePath}\"",
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        });
-                        return; // Success, exit the loop
-                    }
-                    catch
-                    {
-                        // Try next player
-                        continue;
-                    }
-                }
-                throw new InvalidOperationException("No suitable audio player found on Linux");
+                PlayAudioFileWithLinuxPlayer(filePath);
             }
             else
             {
                 throw new PlatformNotSupportedException("Audio playback not supported on this platform");
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Silently fail - sound notification is not critical
+            // Log error but don't fail - sound notification is not critical
+            Console.WriteLine($"Sound notification failed: {ex.Message}");
             throw;
         }
+    }
+
+    private void PlayAudioFileWithNAudio(string filePath)
+    {
+        using var audioFile = new AudioFileReader(filePath);
+        using var outputDevice = new WaveOutEvent();
+        
+        // Set up event handler for when playback stops
+        var playbackComplete = new ManualResetEventSlim(false);
+        outputDevice.PlaybackStopped += (sender, e) => playbackComplete.Set();
+        
+        outputDevice.Init(audioFile);
+        outputDevice.Play();
+        
+        // Wait for playback to complete without polling
+        playbackComplete.Wait();
+    }
+
+    private void PlayAudioFileWithAfplay(string filePath)
+    {
+        var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = "afplay",
+            Arguments = $"\"{filePath}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        });
+        
+        if (process != null)
+        {
+            process.WaitForExit();
+        }
+        else
+        {
+            throw new InvalidOperationException("Failed to start afplay process");
+        }
+    }
+
+    private void PlayAudioFileWithLinuxPlayer(string filePath)
+    {
+        // Try common audio players on Linux
+        var audioPlayers = new[] { "paplay", "aplay", "mpg123", "mpg321", "play" };
+        foreach (var player in audioPlayers)
+        {
+            try
+            {
+                var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = player,
+                    Arguments = $"\"{filePath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                
+                if (process != null)
+                {
+                    process.WaitForExit();
+                    return; // Success, exit the loop
+                }
+            }
+            catch
+            {
+                // Try next player
+                continue;
+            }
+        }
+        throw new InvalidOperationException("No suitable audio player found on Linux");
     }
 
     public void Dispose()
