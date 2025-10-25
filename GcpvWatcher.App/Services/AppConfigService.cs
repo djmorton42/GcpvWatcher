@@ -69,6 +69,8 @@ public class AppConfigService
             GcpvExportFilePattern = dto.GcpvExportFilePattern,
             NotificationSoundPath = dto.NotificationSoundPath,
             OutputEncoding = dto.OutputEncoding,
+            EvtBackupDirectory = dto.EvtBackupDirectory,
+            EnableNotificationSound = dto.EnableNotificationSound,
             KeyFields = keyFields
         };
     }

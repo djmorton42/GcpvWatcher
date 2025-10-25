@@ -54,7 +54,7 @@ public class FileWatcherService : IDisposable
                 ? _config.NotificationSoundPath 
                 : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _config.NotificationSoundPath);
             
-            _soundNotificationService = new SoundNotificationService(soundPath);
+            _soundNotificationService = new SoundNotificationService(soundPath, _config.EnableNotificationSound);
         }
     }
 

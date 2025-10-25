@@ -6,20 +6,22 @@ namespace GcpvWatcher.App.Services;
 public class SoundNotificationService : IDisposable
 {
     private readonly string _notificationSoundPath;
+    private readonly bool _enableNotificationSound;
     private readonly object _lockObject = new object();
     private DateTime _lastPlayTime = DateTime.MinValue;
     private readonly TimeSpan _debounceInterval = TimeSpan.FromSeconds(5);
     private bool _disposed = false;
     private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-    public SoundNotificationService(string notificationSoundPath)
+    public SoundNotificationService(string notificationSoundPath, bool enableNotificationSound = true)
     {
         _notificationSoundPath = notificationSoundPath ?? throw new ArgumentNullException(nameof(notificationSoundPath));
+        _enableNotificationSound = enableNotificationSound;
     }
 
     public void PlayNotificationSound()
     {
-        if (_disposed)
+        if (_disposed || !_enableNotificationSound)
             return;
 
         lock (_lockObject)

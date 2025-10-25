@@ -1,6 +1,7 @@
 {
   "GcpvExportFilePattern": "Race*.csv",
   "NotificationSoundPath": "etc/notification.mp3",
+  "EnableNotificationSound": true,
   "OutputEncoding": "utf-16",
   "EvtBackupDirectory": "backups",
   "KeyFields": {

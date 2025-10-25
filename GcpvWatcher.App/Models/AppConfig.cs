@@ -18,6 +18,9 @@ public class AppConfig
 
     [JsonPropertyName("EvtBackupDirectory")]
     public string EvtBackupDirectory { get; set; } = "backups";
+
+    [JsonPropertyName("EnableNotificationSound")]
+    public bool EnableNotificationSound { get; set; } = true;
 }
 
 public class AppConfigDto
@@ -36,6 +39,9 @@ public class AppConfigDto
 
     [JsonPropertyName("EvtBackupDirectory")]
     public string EvtBackupDirectory { get; set; } = "backups";
+
+    [JsonPropertyName("EnableNotificationSound")]
+    public bool EnableNotificationSound { get; set; } = true;
 }
 
 public class KeyFieldConfigDto
