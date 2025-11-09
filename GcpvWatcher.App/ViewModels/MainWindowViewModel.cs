@@ -24,6 +24,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     private UserPreferences _userPreferences = new();
     private readonly ObservableCollection<Race> _races = new();
     private string _logContent = "";
+    private string _rawEvtContent = "";
 
     public MainWindowViewModel()
     {
@@ -87,11 +88,15 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CanStartWatching));
                 OnPropertyChanged(nameof(CanStopWatching));
+                OnPropertyChanged(nameof(IsRawEvtTabEnabled));
                 ((RelayCommand)StartWatchingCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)StopWatchingCommand).RaiseCanExecuteChanged();
                 
                 // Save user preferences
                 SaveUserPreferences();
+                
+                // Update raw EVT content when directory changes
+                UpdateRawEvtContent();
             }
         }
     }
@@ -133,6 +138,21 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             }
         }
     }
+
+    public string RawEvtContent
+    {
+        get => _rawEvtContent;
+        set
+        {
+            if (_rawEvtContent != value)
+            {
+                _rawEvtContent = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool IsRawEvtTabEnabled => !string.IsNullOrEmpty(_finishLynxDirectory);
 
     public ICommand BrowseWatchDirectoryCommand { get; }
     public ICommand BrowseFinishLynxDirectoryCommand { get; }
@@ -303,6 +323,9 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             {
                 _finishLynxDirectory = _userPreferences.FinishLynxDirectory;
                 OnPropertyChanged(nameof(FinishLynxDirectory));
+                OnPropertyChanged(nameof(IsRawEvtTabEnabled));
+                // Update raw EVT content when loading preferences
+                UpdateRawEvtContent();
             }
             
             ApplicationLogger.Log("User preferences loaded successfully");
@@ -374,6 +397,9 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 {
                     _races.Add(race);
                 }
+                
+                // Update raw EVT content when races are updated
+                UpdateRawEvtContent();
             });
         }
     }
@@ -453,6 +479,39 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             await _fileWatcherService.DisposeAsync();
             _fileWatcherService = null;
         }
+    }
+
+    private void UpdateRawEvtContent()
+    {
+        if (string.IsNullOrEmpty(_finishLynxDirectory))
+        {
+            RawEvtContent = "";
+            return;
+        }
+
+        var evtFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt");
+        
+        try
+        {
+            if (File.Exists(evtFilePath))
+            {
+                RawEvtContent = File.ReadAllText(evtFilePath);
+            }
+            else
+            {
+                RawEvtContent = "No Lynx.evt file found in event directory";
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error reading Lynx.evt file", ex);
+            RawEvtContent = $"Error reading Lynx.evt file: {ex.Message}";
+        }
+    }
+
+    public void ReloadRawEvtContent()
+    {
+        UpdateRawEvtContent();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

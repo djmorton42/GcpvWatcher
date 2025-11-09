@@ -158,8 +158,11 @@
         </StackPanel>
 
         <!-- Tabbed Content -->
-        <TabControl Grid.Row="7" Margin="0,0,0,0">
-            <TabItem Header="Races">
+        <TabControl Grid.Row="7" 
+                    Margin="0,0,0,0"
+                    x:Name="MainTabControl"
+                    SelectionChanged="OnTabSelectionChanged">
+            <TabItem Header="Races" x:Name="RacesTab">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" 
                               HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl ItemsSource="{Binding Races}">
@@ -217,6 +220,23 @@
                     <TextBox Text="{Binding LogContent}" 
                              IsReadOnly="True" 
                              TextWrapping="Wrap" 
+                             AcceptsReturn="True" 
+                             FontFamily="Consolas, Courier New, monospace" 
+                             FontSize="11" 
+                             Background="White" 
+                             Foreground="Black" 
+                             BorderThickness="0" />
+                </ScrollViewer>
+            </TabItem>
+            
+            <TabItem Header="Raw Lynx.evt" 
+                     x:Name="RawEvtTab"
+                     IsEnabled="{Binding IsRawEvtTabEnabled}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding RawEvtContent}" 
+                             IsReadOnly="True" 
+                             TextWrapping="NoWrap" 
                              AcceptsReturn="True" 
                              FontFamily="Consolas, Courier New, monospace" 
                              FontSize="11" 
