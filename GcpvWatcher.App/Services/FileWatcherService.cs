@@ -5,7 +5,7 @@ using GcpvWatcher.App.Providers;
 
 namespace GcpvWatcher.App.Services;
 
-public class FileWatcherService : IDisposable
+public class FileWatcherService : IFileWatcherService
 {
     private FileSystemWatcher? _fileWatcher;
     private readonly AppConfig _config;

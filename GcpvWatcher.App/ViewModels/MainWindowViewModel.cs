@@ -19,7 +19,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     private Window? _window;
     private readonly FileOperationsService _fileOperationsService;
     private readonly AppConfigService _appConfigService;
-    private FileWatcherService? _fileWatcherService;
+    private IFileWatcherService? _fileWatcherService;
     private AppConfig? _appConfig;
     private UserPreferences _userPreferences = new();
     private readonly ObservableCollection<Race> _races = new();
@@ -205,7 +205,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 return;
             }
 
-            _fileWatcherService = new FileWatcherService(_appConfig, _watchDirectory, _finishLynxDirectory);
+            _fileWatcherService = CreateFileWatcherService(_appConfig);
             _fileWatcherService.FileProcessed += OnFileProcessed;
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
             _fileWatcherService.RacesUpdated += OnRacesUpdated;
@@ -230,6 +230,27 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         {
             ApplicationLogger.LogException($"Error starting file watcher", ex);
         }
+    }
+
+    private IFileWatcherService CreateFileWatcherService(AppConfig config)
+    {
+        var strategy = config.FileWatcherStrategy?.ToLowerInvariant() ?? "event";
+        
+        IFileWatcherService service;
+        if (strategy == "polling")
+        {
+            service = new PollingFileWatcherService(config, _watchDirectory, _finishLynxDirectory);
+            WatcherLogger.Log("Using polling file watcher strategy (checks directory every 10 seconds)");
+            ApplicationLogger.Log("FileWatcherStrategy: polling");
+        }
+        else
+        {
+            service = new FileWatcherService(config, _watchDirectory, _finishLynxDirectory);
+            WatcherLogger.Log("Using event-based file watcher strategy (FileSystemWatcher)");
+            ApplicationLogger.Log("FileWatcherStrategy: event");
+        }
+        
+        return service;
     }
 
     private void StopWatching()
@@ -396,7 +417,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             // Start watching with new directory
             if (_appConfig != null)
             {
-                _fileWatcherService = new FileWatcherService(_appConfig, _watchDirectory, _finishLynxDirectory);
+                _fileWatcherService = CreateFileWatcherService(_appConfig);
                 _fileWatcherService.FileProcessed += OnFileProcessed;
                 _fileWatcherService.ErrorOccurred += OnErrorOccurred;
                 _fileWatcherService.RacesUpdated += OnRacesUpdated;

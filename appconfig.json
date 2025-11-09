@@ -4,6 +4,7 @@
   "EnableNotificationSound": true,
   "OutputEncoding": "utf-16",
   "EvtBackupDirectory": "backups",
+  "FileWatcherStrategy": "polling",
   "KeyFields": {
     "track_params": {
       "key": "Event :",

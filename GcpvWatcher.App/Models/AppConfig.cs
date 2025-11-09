@@ -21,6 +21,9 @@ public class AppConfig
 
     [JsonPropertyName("EnableNotificationSound")]
     public bool EnableNotificationSound { get; set; } = true;
+
+    [JsonPropertyName("FileWatcherStrategy")]
+    public string FileWatcherStrategy { get; set; } = "event";
 }
 
 public class AppConfigDto
@@ -42,6 +45,9 @@ public class AppConfigDto
 
     [JsonPropertyName("EnableNotificationSound")]
     public bool EnableNotificationSound { get; set; } = true;
+
+    [JsonPropertyName("FileWatcherStrategy")]
+    public string FileWatcherStrategy { get; set; } = "event";
 }
 
 public class KeyFieldConfigDto

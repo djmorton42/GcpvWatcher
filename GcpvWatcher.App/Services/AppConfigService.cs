@@ -71,6 +71,7 @@ public class AppConfigService
             OutputEncoding = dto.OutputEncoding,
             EvtBackupDirectory = dto.EvtBackupDirectory,
             EnableNotificationSound = dto.EnableNotificationSound,
+            FileWatcherStrategy = dto.FileWatcherStrategy,
             KeyFields = keyFields
         };
     }
