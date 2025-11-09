@@ -15,11 +15,13 @@ public class EvtFileManager : IDisposable
 {
     private readonly string _finishLynxDirectory;
     private readonly string _lynxEvtFilePath;
+    private readonly string _lynxEvtKeepFilePath;
     private readonly Dictionary<string, List<Race>> _fileRaces; // Maps source file path to races
     private readonly object _lockObject = new object();
     private bool _disposed = false;
     private string _lastFinishLynxDirectory; // Track directory changes
     private bool _hasLoadedExistingRaces = false; // Track if we've already loaded existing races
+    private bool _hasLoadedKeepRaces = false; // Track if we've loaded keep races
     private readonly AppConfig _config;
 
     public event EventHandler? RacesUpdated;
@@ -29,6 +31,7 @@ public class EvtFileManager : IDisposable
         _finishLynxDirectory = finishLynxDirectory ?? throw new ArgumentNullException(nameof(finishLynxDirectory));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _lynxEvtFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt");
+        _lynxEvtKeepFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt.keep");
         _fileRaces = new Dictionary<string, List<Race>>();
         _lastFinishLynxDirectory = finishLynxDirectory;
         
@@ -41,9 +44,21 @@ public class EvtFileManager : IDisposable
     {
         lock (_lockObject)
         {
+            // Load keep races if not already loaded
+            if (!_hasLoadedKeepRaces)
+            {
+                LoadKeepRaces();
+                _hasLoadedKeepRaces = true;
+            }
+            
+            // Get races from keep file (highest precedence)
+            var keepRaces = _fileRaces.ContainsKey("evt_keep_races") 
+                ? _fileRaces["evt_keep_races"] 
+                : new List<Race>();
+            
             // Get races from CSV files
             var csvRaces = _fileRaces
-                .Where(kvp => kvp.Key != "evt_file_races")
+                .Where(kvp => kvp.Key != "evt_file_races" && kvp.Key != "evt_keep_races")
                 .SelectMany(kvp => kvp.Value)
                 .ToList();
             
@@ -52,19 +67,26 @@ public class EvtFileManager : IDisposable
                 ? _fileRaces["evt_file_races"] 
                 : new List<Race>();
             
-            // Merge races, with CSV races taking precedence over EVT races
+            // Merge races with precedence: Keep > CSV > EVT
             var allRaces = new Dictionary<string, Race>();
             
-            // Add EVT races first
+            // Add EVT races first (lowest precedence)
             foreach (var race in evtRaces)
             {
                 allRaces[race.RaceNumber] = race;
             }
             
-            // Add CSV races (this will overwrite any matching EVT races)
+            // Add CSV races (overwrites EVT races)
             foreach (var race in csvRaces)
             {
                 allRaces[race.RaceNumber] = race;
+            }
+            
+            // Add keep races last (highest precedence - overwrites CSV and EVT races)
+            foreach (var race in keepRaces)
+            {
+                // Mark keep races with IsFromKeepFile flag
+                allRaces[race.RaceNumber] = race with { IsFromKeepFile = true };
             }
             
             return allRaces.Values
@@ -104,6 +126,14 @@ public class EvtFileManager : IDisposable
                 _fileRaces.Clear();
                 _lastFinishLynxDirectory = _finishLynxDirectory;
                 _hasLoadedExistingRaces = false; // Reset the flag when directory changes
+                _hasLoadedKeepRaces = false; // Reset keep races flag when directory changes
+            }
+            
+            // Reload keep races if not loaded (they should always be fresh)
+            if (!_hasLoadedKeepRaces)
+            {
+                LoadKeepRaces();
+                _hasLoadedKeepRaces = true;
             }
             
             // Load existing races from EVT file only once, not for every file processed
@@ -221,20 +251,34 @@ public class EvtFileManager : IDisposable
 
         lock (_lockObject)
         {
+            // Ensure keep races are loaded
+            if (!_hasLoadedKeepRaces)
+            {
+                LoadKeepRaces();
+                _hasLoadedKeepRaces = true;
+            }
+            
             // Get all races from active CSV files
             var activeRaces = _fileRaces
                 .Where(kvp => activeFiles.Contains(kvp.Key))
                 .SelectMany(kvp => kvp.Value)
                 .ToDictionary(race => race.RaceNumber, race => race);
 
+            // Get keep races (these should never be considered orphaned)
+            var keepRaces = _fileRaces.ContainsKey("evt_keep_races") 
+                ? _fileRaces["evt_keep_races"] 
+                : new List<Race>();
+            var keepRaceNumbers = keepRaces.Select(r => r.RaceNumber).ToHashSet();
+
             // Get races from EVT file
             var evtRaces = _fileRaces.ContainsKey("evt_file_races") 
                 ? _fileRaces["evt_file_races"] 
                 : new List<Race>();
 
-            // Find races in EVT that are not in any active CSV files
+            // Find races in EVT that are not in any active CSV files AND not in keep file
+            // Keep races should never be considered orphaned
             var orphanedRaces = evtRaces
-                .Where(race => !activeRaces.ContainsKey(race.RaceNumber))
+                .Where(race => !activeRaces.ContainsKey(race.RaceNumber) && !keepRaceNumbers.Contains(race.RaceNumber))
                 .ToList();
 
             if (orphanedRaces.Count > 0)
@@ -242,8 +286,9 @@ public class EvtFileManager : IDisposable
                 ApplicationLogger.Log($"Found {orphanedRaces.Count} orphaned races to remove: {string.Join(", ", orphanedRaces.Select(r => r.RaceNumber))}");
                 
                 // Remove orphaned races from EVT races
+                // Keep races that are in active CSV files OR in keep file
                 var updatedEvtRaces = evtRaces
-                    .Where(race => activeRaces.ContainsKey(race.RaceNumber))
+                    .Where(race => activeRaces.ContainsKey(race.RaceNumber) || keepRaceNumbers.Contains(race.RaceNumber))
                     .ToList();
                 
                 _fileRaces["evt_file_races"] = updatedEvtRaces;
@@ -467,6 +512,140 @@ public class EvtFileManager : IDisposable
             ApplicationLogger.LogException("Error loading existing races from EVT file", ex);
             // Continue with empty race list - don't fail startup
         }
+    }
+
+    private void LoadKeepRaces(bool suppressUserLog = false)
+    {
+        try
+        {
+            if (!File.Exists(_lynxEvtKeepFilePath))
+            {
+                // Keep file doesn't exist - clear any previously loaded keep races
+                if (_fileRaces.ContainsKey("evt_keep_races"))
+                {
+                    _fileRaces.Remove("evt_keep_races");
+                }
+                return;
+            }
+
+            // Check if file is empty or very small
+            var fileInfo = new FileInfo(_lynxEvtKeepFilePath);
+            if (fileInfo.Length < 10) // Less than 10 bytes, likely empty
+            {
+                ApplicationLogger.Log("Lynx.evt.keep file exists but appears to be empty");
+                if (_fileRaces.ContainsKey("evt_keep_races"))
+                {
+                    _fileRaces.Remove("evt_keep_races");
+                }
+                return;
+            }
+
+            ApplicationLogger.Log("Loading races from Lynx.evt.keep file...");
+            
+            // Use a timeout to prevent hanging
+            var loadTask = Task.Run(async () =>
+            {
+                // Bypass extension validation for .keep file
+                var dataProvider = new EventDataFileProvider(_lynxEvtKeepFilePath, validateExtension: false);
+                var parser = new EvtParser(dataProvider);
+                return await parser.ParseAsync();
+            });
+            
+            if (!loadTask.Wait(TimeSpan.FromSeconds(5))) // 5 second timeout
+            {
+                ApplicationLogger.Log("Lynx.evt.keep file parsing timed out");
+                return;
+            }
+            
+            var keepRaces = loadTask.Result;
+            ApplicationLogger.Log("Lynx.evt.keep file parsing completed");
+
+            var racesList = keepRaces.ToList();
+            var keepSourceKey = "evt_keep_races";
+            
+            if (racesList.Count > 0)
+            {
+                _fileRaces[keepSourceKey] = racesList;
+                var raceNumbers = string.Join(", ", racesList.Select(r => r.RaceNumber));
+                ApplicationLogger.Log($"Loaded {racesList.Count} races from Lynx.evt.keep file: {raceNumbers}");
+                if (!suppressUserLog)
+                {
+                    WatcherLogger.Log($"Loaded {racesList.Count} races from Lynx.evt.keep file ({raceNumbers})");
+                }
+            }
+            else
+            {
+                ApplicationLogger.Log("Lynx.evt.keep file exists but contains no races");
+                if (_fileRaces.ContainsKey(keepSourceKey))
+                {
+                    _fileRaces.Remove(keepSourceKey);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error loading races from Lynx.evt.keep file", ex);
+            // Continue without keep races - don't fail
+        }
+    }
+
+    /// <summary>
+    /// Reloads races from the Lynx.evt.keep file
+    /// </summary>
+    public void ReloadKeepRaces()
+    {
+        lock (_lockObject)
+        {
+            _hasLoadedKeepRaces = false;
+            var previousKeepRaces = _fileRaces.ContainsKey("evt_keep_races") 
+                ? _fileRaces["evt_keep_races"].Select(r => r.RaceNumber).ToHashSet()
+                : new HashSet<string>();
+            
+            // Suppress user log from LoadKeepRaces since we'll log our own message
+            LoadKeepRaces(suppressUserLog: true);
+            _hasLoadedKeepRaces = true;
+            
+            // Get current keep race numbers
+            var currentKeepRaces = _fileRaces.ContainsKey("evt_keep_races") 
+                ? _fileRaces["evt_keep_races"].Select(r => r.RaceNumber).ToHashSet()
+                : new HashSet<string>();
+            
+            // If keep races were removed, also remove them from evt_file_races
+            // (they might have been written to the EVT file previously)
+            var removedKeepRaces = previousKeepRaces.Except(currentKeepRaces).ToList();
+            if (removedKeepRaces.Count > 0)
+            {
+                if (_fileRaces.ContainsKey("evt_file_races"))
+                {
+                    var evtRaces = _fileRaces["evt_file_races"];
+                    var updatedEvtRaces = evtRaces
+                        .Where(race => !removedKeepRaces.Contains(race.RaceNumber))
+                        .ToList();
+                    _fileRaces["evt_file_races"] = updatedEvtRaces;
+                    ApplicationLogger.Log($"Removed {removedKeepRaces.Count} keep races from EVT races: {string.Join(", ", removedKeepRaces)}");
+                }
+            }
+            
+            // Log if keep races changed
+            if (!previousKeepRaces.SetEquals(currentKeepRaces))
+            {
+                if (currentKeepRaces.Count > 0)
+                {
+                    var raceNumbers = string.Join(", ", currentKeepRaces.OrderBy(r => r));
+                    WatcherLogger.Log($"Reloaded {currentKeepRaces.Count} races from Lynx.evt.keep file ({raceNumbers})");
+                }
+                else
+                {
+                    WatcherLogger.Log("Lynx.evt.keep file cleared - no keep races");
+                }
+            }
+            
+            // Trigger update to EVT file with new keep races
+            WriteAllRacesToEvtFile();
+        }
+        
+        // Notify that races have been updated
+        RacesUpdated?.Invoke(this, EventArgs.Empty);
     }
 
     private void WriteRaceInfoLine(CsvWriter csv, Race race)

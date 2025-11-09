@@ -20,6 +20,7 @@ public class PollingFileWatcherService : IFileWatcherService
     private readonly EvtFileManager _evtFileManager;
     private readonly RaceDataConverter _raceDataConverter;
     private readonly Dictionary<string, string> _fileHashes; // Maps file path to hash
+    private string? _keepFileHash; // Hash of the keep file to detect changes
     private readonly object _lockObject = new object();
     private bool _disposed = false;
     private bool _isWatching = false;
@@ -110,6 +111,16 @@ public class PollingFileWatcherService : IFileWatcherService
         {
             // Load existing races from EVT file first
             await LoadExistingRacesFromEvtFileAsync();
+            
+            // Load keep races (these take precedence over all other races)
+            _evtFileManager.ReloadKeepRaces();
+            
+            // Initialize keep file hash
+            var keepFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt.keep");
+            if (File.Exists(keepFilePath))
+            {
+                _keepFileHash = await CalculateFileHashAsync(keepFilePath);
+            }
             
             // Load existing racers from PPL file if it exists
             await LoadExistingRacersFromPplFileAsync();
@@ -300,6 +311,9 @@ public class PollingFileWatcherService : IFileWatcherService
             return;
         }
 
+        // Check for changes to the keep file
+        await CheckKeepFileChangesAsync();
+
         // Get all files matching the pattern
         var currentFiles = Directory.GetFiles(_watchDirectory, _config.GcpvExportFilePattern)
             .ToHashSet();
@@ -392,6 +406,54 @@ public class PollingFileWatcherService : IFileWatcherService
         if (changesToProcess.Count > 0)
         {
             await ProcessFileChangesAsync(changesToProcess);
+        }
+    }
+
+    private async Task CheckKeepFileChangesAsync()
+    {
+        var keepFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt.keep");
+        
+        if (!File.Exists(keepFilePath))
+        {
+            // Keep file doesn't exist - clear hash if it was set
+            lock (_lockObject)
+            {
+                if (_keepFileHash != null)
+                {
+                    _keepFileHash = null;
+                    // Reload to clear keep races (inside lock for consistency)
+                    _evtFileManager.ReloadKeepRaces();
+                }
+            }
+            return;
+        }
+
+        try
+        {
+            var currentHash = await CalculateFileHashAsync(keepFilePath);
+            
+            lock (_lockObject)
+            {
+                if (currentHash != null && currentHash != _keepFileHash)
+                {
+                    // Keep file has changed
+                    _keepFileHash = currentHash;
+                    // Reload keep races (inside lock for consistency)
+                    _evtFileManager.ReloadKeepRaces();
+                    WatcherLogger.Log("Lynx.evt.keep file changed - reloaded keep races");
+                }
+                else if (_keepFileHash == null && currentHash != null)
+                {
+                    // Keep file was just created or first time checking
+                    _keepFileHash = currentHash;
+                    // Reload keep races (inside lock for consistency)
+                    _evtFileManager.ReloadKeepRaces();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error checking keep file for changes", ex);
         }
     }
 

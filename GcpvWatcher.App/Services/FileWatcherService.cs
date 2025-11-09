@@ -8,6 +8,7 @@ namespace GcpvWatcher.App.Services;
 public class FileWatcherService : IFileWatcherService
 {
     private FileSystemWatcher? _fileWatcher;
+    private FileSystemWatcher? _keepFileWatcher;
     private readonly AppConfig _config;
     private readonly string _watchDirectory;
     private readonly string _finishLynxDirectory;
@@ -105,12 +106,28 @@ public class FileWatcherService : IFileWatcherService
         _fileWatcher.Deleted += OnFileDeleted;
         _fileWatcher.Error += OnError;
 
+        // Watch for changes to the keep file
+        var keepFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt.keep");
+        _keepFileWatcher = new FileSystemWatcher(_finishLynxDirectory)
+        {
+            Filter = "Lynx.evt.keep",
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
+            EnableRaisingEvents = true
+        };
+        _keepFileWatcher.Created += OnKeepFileChanged;
+        _keepFileWatcher.Changed += OnKeepFileChanged;
+        _keepFileWatcher.Deleted += OnKeepFileDeleted;
+        _keepFileWatcher.Error += OnError;
+
         WatcherLogger.Log($"Started watching: {_watchDirectory} for pattern: {_config.GcpvExportFilePattern}");
         
         try
         {
             // Load existing races from EVT file first
             await LoadExistingRacesFromEvtFileAsync();
+            
+            // Load keep races (these take precedence over all other races)
+            _evtFileManager.ReloadKeepRaces();
             
             // Load existing racers from PPL file if it exists
             await LoadExistingRacersFromPplFileAsync();
@@ -128,6 +145,18 @@ public class FileWatcherService : IFileWatcherService
             _fileWatcher.Error -= OnError;
             _fileWatcher.Dispose();
             _fileWatcher = null;
+            
+            // Stop keep file watcher
+            if (_keepFileWatcher != null)
+            {
+                _keepFileWatcher.EnableRaisingEvents = false;
+                _keepFileWatcher.Created -= OnKeepFileChanged;
+                _keepFileWatcher.Changed -= OnKeepFileChanged;
+                _keepFileWatcher.Deleted -= OnKeepFileDeleted;
+                _keepFileWatcher.Error -= OnError;
+                _keepFileWatcher.Dispose();
+                _keepFileWatcher = null;
+            }
             
             WatcherLogger.Log("File watcher stopped due to parsing timeout");
             throw; // Re-throw to indicate startup failure
@@ -256,6 +285,18 @@ public class FileWatcherService : IFileWatcherService
         _fileWatcher.Error -= OnError;
         _fileWatcher.Dispose();
         _fileWatcher = null;
+
+        // Stop watching keep file
+        if (_keepFileWatcher != null)
+        {
+            _keepFileWatcher.EnableRaisingEvents = false;
+            _keepFileWatcher.Created -= OnKeepFileChanged;
+            _keepFileWatcher.Changed -= OnKeepFileChanged;
+            _keepFileWatcher.Deleted -= OnKeepFileDeleted;
+            _keepFileWatcher.Error -= OnError;
+            _keepFileWatcher.Dispose();
+            _keepFileWatcher = null;
+        }
 
         WatcherLogger.Log("Stopped watching directory");
     }
@@ -422,6 +463,44 @@ public class FileWatcherService : IFileWatcherService
         RacesUpdated?.Invoke(this, EventArgs.Empty);
     }
 
+    private async void OnKeepFileChanged(object sender, FileSystemEventArgs e)
+    {
+        if (e.ChangeType != WatcherChangeTypes.Created && e.ChangeType != WatcherChangeTypes.Changed)
+            return;
+
+        WatcherLogger.Log("Lynx.evt.keep file changed - reloading keep races");
+        
+        // Wait a bit to ensure file is fully written
+        await Task.Delay(500);
+        
+        try
+        {
+            _evtFileManager.ReloadKeepRaces();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Error reloading keep races: {ex.Message}";
+            WatcherLogger.Log(errorMessage);
+            ErrorOccurred?.Invoke(this, errorMessage);
+        }
+    }
+
+    private void OnKeepFileDeleted(object sender, FileSystemEventArgs e)
+    {
+        WatcherLogger.Log("Lynx.evt.keep file deleted - clearing keep races");
+        
+        try
+        {
+            _evtFileManager.ReloadKeepRaces(); // This will clear keep races if file doesn't exist
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Error clearing keep races: {ex.Message}";
+            WatcherLogger.Log(errorMessage);
+            ErrorOccurred?.Invoke(this, errorMessage);
+        }
+    }
+
     public IEnumerable<Race> GetAllRaces()
     {
         return _evtFileManager.GetAllRaces();
@@ -485,6 +564,7 @@ public class FileWatcherService : IFileWatcherService
         {
             StopWatching();
             _cleanupTimer?.Dispose();
+            _keepFileWatcher?.Dispose();
             _evtFileManager?.Dispose();
             _soundNotificationService?.Dispose();
             _disposed = true;

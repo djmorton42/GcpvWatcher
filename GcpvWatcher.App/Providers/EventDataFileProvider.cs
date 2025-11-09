@@ -7,11 +7,16 @@ public class EventDataFileProvider : BaseEventDataProvider
     private readonly string _filePath;
 
     public EventDataFileProvider(string filePath)
+        : this(filePath, validateExtension: true)
+    {
+    }
+
+    public EventDataFileProvider(string filePath, bool validateExtension)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
 
-        if (!filePath.EndsWith(".evt", StringComparison.OrdinalIgnoreCase))
+        if (validateExtension && !filePath.EndsWith(".evt", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("File must have a .evt extension.", nameof(filePath));
 
         if (!File.Exists(filePath))

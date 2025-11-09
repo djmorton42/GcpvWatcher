@@ -10,6 +10,7 @@
 
     <Window.Resources>
         <converters:RacersToStringConverter x:Key="RacersToStringConverter" />
+        <converters:BoolToBackgroundConverter x:Key="BoolToBackgroundConverter" />
     </Window.Resources>
     
     <Window.Styles>
@@ -164,7 +165,7 @@
                     <ItemsControl ItemsSource="{Binding Races}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="LightGray" 
+                                <Border Background="{Binding IsFromKeepFile, Converter={StaticResource BoolToBackgroundConverter}}" 
                                         BorderBrush="DarkGray" 
                                         BorderThickness="1" 
                                         CornerRadius="3" 
@@ -178,6 +179,12 @@
                                             <TextBlock Text="{Binding RaceNumber}" 
                                                        FontWeight="Bold" 
                                                        FontSize="12" />
+                                            <TextBlock Text=" (Keep File)" 
+                                                       FontWeight="Normal" 
+                                                       FontSize="10" 
+                                                       Foreground="DarkOrange"
+                                                       Margin="5,0,0,0"
+                                                       IsVisible="{Binding IsFromKeepFile}" />
                                         </StackPanel>
                                         <TextBlock Text="{Binding RaceTitle}" 
                                                    FontSize="11" 
