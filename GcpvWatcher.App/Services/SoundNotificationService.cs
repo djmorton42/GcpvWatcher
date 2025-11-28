@@ -59,7 +59,7 @@ public class SoundNotificationService : IDisposable
                     catch (Exception ex)
                     {
                         // Log error but don't fail - sound notification is not critical
-                        Console.WriteLine($"Sound notification failed: {ex.Message}");
+                        ApplicationLogger.LogException("Sound notification failed", ex);
                     }
                 }, _cancellationTokenSource.Token);
 
@@ -68,7 +68,7 @@ public class SoundNotificationService : IDisposable
             catch (Exception ex)
             {
                 // Log error but don't fail - sound notification is not critical
-                Console.WriteLine($"Sound notification failed: {ex.Message}");
+                ApplicationLogger.LogException("Sound notification failed", ex);
             }
         }
     }
@@ -98,7 +98,7 @@ public class SoundNotificationService : IDisposable
         catch (Exception ex)
         {
             // Log error but don't fail - sound notification is not critical
-            Console.WriteLine($"Sound notification failed: {ex.Message}");
+            ApplicationLogger.LogException("Sound notification failed", ex);
             throw;
         }
     }

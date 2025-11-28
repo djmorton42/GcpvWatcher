@@ -17,7 +17,9 @@ public static class ApplicationLogger
             return;
 
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        Console.WriteLine($"[{timestamp}] [APP] {message}");
+        var logMessage = $"[{timestamp}] [APP] {message}";
+        Console.WriteLine(logMessage);
+        FileLogService.WriteLog(logMessage);
     }
 
     /// <summary>
@@ -36,10 +38,13 @@ public static class ApplicationLogger
             : $"[{timestamp}] [APP] {message}: {exception?.Message}";
         
         Console.WriteLine(logMessage);
+        FileLogService.WriteLog(logMessage);
         
         if (exception != null)
         {
-            Console.WriteLine($"[{timestamp}] [APP] Stack Trace: {exception.StackTrace}");
+            var stackTraceMessage = $"[{timestamp}] [APP] Stack Trace: {exception.StackTrace}";
+            Console.WriteLine(stackTraceMessage);
+            FileLogService.WriteLog(stackTraceMessage);
         }
     }
 }

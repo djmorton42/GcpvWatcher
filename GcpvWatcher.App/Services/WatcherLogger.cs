@@ -25,6 +25,7 @@ public static class WatcherLogger
         var formattedMessage = $"[{timestamp}] {message}";
         
         Console.WriteLine(formattedMessage);
+        FileLogService.WriteLog(formattedMessage);
         LogMessage?.Invoke(null, formattedMessage);
     }
 }

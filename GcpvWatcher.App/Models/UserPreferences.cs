@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GcpvWatcher.App.Services;
 
 namespace GcpvWatcher.App.Models;
 
@@ -26,7 +27,7 @@ public class UserPreferences
         catch (Exception ex)
         {
             // Log error but don't fail startup
-            Console.WriteLine($"Error loading user preferences: {ex.Message}");
+            ApplicationLogger.LogException("Error loading user preferences", ex);
             return new UserPreferences();
         }
     }
@@ -42,7 +43,7 @@ public class UserPreferences
         catch (Exception ex)
         {
             // Log error but don't fail the operation
-            Console.WriteLine($"Error saving user preferences: {ex.Message}");
+            ApplicationLogger.LogException("Error saving user preferences", ex);
         }
     }
 }
