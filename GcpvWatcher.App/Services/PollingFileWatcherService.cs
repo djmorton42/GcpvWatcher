@@ -537,6 +537,27 @@ public class PollingFileWatcherService : IFileWatcherService
                 logMessages.Add(errorMessage);
                 ApplicationLogger.LogException($"Error processing file change for {change.FilePath}", ex);
                 ErrorOccurred?.Invoke(this, errorMessage);
+                
+                // Only retry transient errors (file locks, network delays)
+                // Don't retry permanent errors (parsing failures, missing files, etc.)
+                if (IsTransientError(ex))
+                {
+                    // Remove file from hash tracking so it will be re-detected on next poll
+                    // This ensures files that failed due to transient issues will be retried
+                    lock (_lockObject)
+                    {
+                        if (_fileHashes.ContainsKey(change.FilePath))
+                        {
+                            _fileHashes.Remove(change.FilePath);
+                            ApplicationLogger.Log($"Removed {fileName} from hash tracking for retry (transient error)");
+                        }
+                    }
+                }
+                else
+                {
+                    // Permanent error - log but don't retry
+                    ApplicationLogger.Log($"Permanent error for {fileName} - will not retry: {ex.GetType().Name}");
+                }
             }
         }
 
@@ -745,6 +766,93 @@ public class PollingFileWatcherService : IFileWatcherService
         _evtFileManager?.Dispose();
         _soundNotificationService?.Dispose();
         _pollingSemaphore?.Dispose();
+    }
+
+    /// <summary>
+    /// Determines if an error is transient (should retry) or permanent (shouldn't retry).
+    /// Transient errors are typically file locks, network delays, or temporary access issues.
+    /// Permanent errors are parsing failures, missing files, or structural issues.
+    /// </summary>
+    private static bool IsTransientError(Exception ex)
+    {
+        // Check the exception type and message
+        var exceptionType = ex.GetType();
+        var message = ex.Message ?? string.Empty;
+        var stackTrace = ex.StackTrace ?? string.Empty;
+        var lowerMessage = message.ToLowerInvariant();
+
+        // Permanent errors - don't retry
+        if (exceptionType == typeof(ArgumentException))
+        {
+            // Parsing errors, invalid data format - won't fix themselves
+            return false;
+        }
+
+        if (exceptionType == typeof(FileNotFoundException))
+        {
+            // File was deleted or doesn't exist - won't fix itself
+            return false;
+        }
+
+        if (exceptionType == typeof(DirectoryNotFoundException))
+        {
+            // Directory structure issue - won't fix itself
+            return false;
+        }
+
+        // Check if error is from EVT file write operations - these are typically transient
+        // Errors from WriteRacesToEvtFile or File.Move operations are usually file locks
+        var isEvtWriteError = stackTrace.Contains("WriteRacesToEvtFile") || 
+                               stackTrace.Contains("WriteAllRacesToEvtFile") ||
+                               stackTrace.Contains("FileSystem.MoveFile") ||
+                               stackTrace.Contains("File.Move") ||
+                               stackTrace.Contains("CreateBackupIfEvtFileExists");
+
+        if (isEvtWriteError)
+        {
+            // EVT write failures are typically transient (file/directory locks)
+            // Even if the message doesn't explicitly say "locked", EVT write errors
+            // are usually due to temporary file system locks
+            return true;
+        }
+
+        // IOException and UnauthorizedAccessException can be transient or permanent
+        // Check the message for indicators of file locks vs other issues
+        if (exceptionType == typeof(IOException) || exceptionType == typeof(UnauthorizedAccessException))
+        {
+            // Transient indicators: file locks, being used by another process, access denied during operations
+            if (lowerMessage.Contains("being used by another process") ||
+                lowerMessage.Contains("cannot access the file") ||
+                lowerMessage.Contains("access to the path is denied") ||
+                lowerMessage.Contains("file is locked") ||
+                lowerMessage.Contains("sharing violation") ||
+                lowerMessage.Contains("the process cannot access") ||
+                lowerMessage.Contains("used by another process"))
+            {
+                return true;
+            }
+
+            // Permanent indicators: file not found, corrupted, or structural issues
+            if (lowerMessage.Contains("could not find file") ||
+                lowerMessage.Contains("file not found") ||
+                lowerMessage.Contains("corrupted") ||
+                lowerMessage.Contains("invalid") ||
+                lowerMessage.Contains("not a valid"))
+            {
+                return false;
+            }
+
+            // For I/O errors without clear indicators, check if it's during file read
+            // If it's during CSV read and not clearly a lock, it might be a corrupted file
+            // Default to transient for I/O errors during EVT operations, but be cautious for CSV reads
+            // Since we can't easily distinguish, default to transient (safer to retry)
+            // If it keeps failing, it will eventually be clear it's permanent
+            return true;
+        }
+
+        // For unknown exception types, default to permanent (don't retry)
+        // This is safer - we don't want to retry on unexpected errors
+        return false;
     }
 
     private class FileChange

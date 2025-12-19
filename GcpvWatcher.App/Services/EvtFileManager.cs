@@ -235,6 +235,8 @@ public class EvtFileManager : IDisposable
             _fileRaces["evt_file_races"] = updatedEvtRaces.Values.ToList();
             
             // Write to EVT file within the same lock to prevent lost updates
+            // If this fails, the caller will remove the file from hash tracking
+            // so it will be re-processed on the next polling cycle
             WriteAllRacesToEvtFile();
         }
 
