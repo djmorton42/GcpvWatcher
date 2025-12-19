@@ -124,7 +124,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 
     public ObservableCollection<Race> Races => _races;
 
-    public Dictionary<int, Racer> Racers => _fileWatcherService?.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<int, Racer>();
+    public Dictionary<string, Racer> Racers => _fileWatcherService?.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, Racer>();
 
     public string LogContent
     {

@@ -18,7 +18,7 @@ public class FileWatcherService : IFileWatcherService
     private readonly object _lockObject = new object();
     private bool _disposed = false;
     private Timer? _cleanupTimer;
-    private Dictionary<int, Racer> _racers = new Dictionary<int, Racer>();
+    private Dictionary<string, Racer> _racers = new Dictionary<string, Racer>();
     private readonly HashSet<string> _filesProcessedDuringStartup = new HashSet<string>();
     private SoundNotificationService? _soundNotificationService;
 
@@ -27,7 +27,7 @@ public class FileWatcherService : IFileWatcherService
     public event EventHandler? RacesUpdated;
     public event EventHandler? RacersUpdated;
 
-    public IReadOnlyDictionary<int, Racer> Racers
+    public IReadOnlyDictionary<string, Racer> Racers
     {
         get
         {

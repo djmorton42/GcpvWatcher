@@ -31,7 +31,7 @@ public interface IFileWatcherService : IDisposable
     /// <summary>
     /// Gets the current collection of racers
     /// </summary>
-    IReadOnlyDictionary<int, Racer> Racers { get; }
+    IReadOnlyDictionary<string, Racer> Racers { get; }
 
     /// <summary>
     /// Starts watching the configured directory asynchronously

@@ -39,8 +39,8 @@ public class RaceDataConverter
         var eventTitle = $"{gcpvRace.RaceGroup} ({gcpvRace.TrackParams}) {gcpvRace.Stage}";
 
         // Convert racers to the format expected by Race object
-        // Race object expects Dictionary<int, int> where key is racer ID and value is lane
-        var racers = new Dictionary<int, int>();
+        // Race object expects Dictionary<string, int> where key is racer ID (can be alphanumeric) and value is lane
+        var racers = new Dictionary<string, int>();
         
         for (int i = 0; i < gcpvRace.Racers.Count; i++)
         {
@@ -66,9 +66,9 @@ public class RaceDataConverter
         return new Race(gcpvRace.RaceNumber, eventTitle, (decimal)numberOfLaps, racers);
     }
 
-    private static bool TryParseRacerId(string racerField, out int racerId)
+    private static bool TryParseRacerId(string racerField, out string racerId)
     {
-        racerId = 0;
+        racerId = string.Empty;
         
         if (string.IsNullOrWhiteSpace(racerField))
             return false;
@@ -79,9 +79,10 @@ public class RaceDataConverter
         if (firstSpaceIndex <= 0)
             return false;
 
-        // Extract the racer ID (everything before the first space)
-        var racerIdString = racerField.Substring(0, firstSpaceIndex).Trim();
+        // Extract the racer ID (everything before the first space) - can be alphanumeric
+        racerId = racerField.Substring(0, firstSpaceIndex).Trim();
         
-        return int.TryParse(racerIdString, out racerId);
+        // Validate that we extracted a non-empty racer ID
+        return !string.IsNullOrEmpty(racerId);
     }
 }

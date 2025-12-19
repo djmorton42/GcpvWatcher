@@ -16,10 +16,10 @@ public class PplParser
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
     }
 
-    public async Task<Dictionary<int, Racer>> ParseAsync()
+    public async Task<Dictionary<string, Racer>> ParseAsync()
     {
         var dataRows = await _dataProvider.GetDataRowsAsync();
-        var racers = new Dictionary<int, Racer>();
+        var racers = new Dictionary<string, Racer>();
 
         foreach (var row in dataRows)
         {
@@ -60,23 +60,19 @@ public class PplParser
 
             var record = records[0];
             
-            // Validate racer ID
-            if (!int.TryParse(record.RacerId.Trim(), out var racerId))
+            // Validate racer ID (must not be empty, can be alphanumeric)
+            // RacerId is the only required field - all other fields are optional
+            var racerId = record.RacerId.Trim();
+            if (string.IsNullOrEmpty(racerId))
             {
-                WatcherLogger.Log("Warning: Problem parsing PPL file");
+                WatcherLogger.Log("Warning: Problem parsing PPL file - racer ID is empty");
                 return null;
             }
 
-            // Validate that we have the required fields
+            // All other fields are optional - use empty strings if not provided
             var lastName = record.LastName.Trim();
             var firstName = record.FirstName.Trim();
             var affiliation = record.Affiliation.Trim();
-
-            if (string.IsNullOrEmpty(lastName) || string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(affiliation))
-            {
-                WatcherLogger.Log("Warning: Problem parsing PPL file");
-                return null;
-            }
 
             return new Racer(racerId, lastName, firstName, affiliation);
         }

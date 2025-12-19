@@ -1,6 +1,6 @@
 namespace GcpvWatcher.App.Models;
 
-public record Race(string RaceNumber, string RaceTitle, decimal NumberOfLaps, Dictionary<int, int> Racers)
+public record Race(string RaceNumber, string RaceTitle, decimal NumberOfLaps, Dictionary<string, int> Racers)
 {
     public bool IsFromKeepFile { get; init; } = false;
 

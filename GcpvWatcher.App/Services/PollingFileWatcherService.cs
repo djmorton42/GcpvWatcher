@@ -25,7 +25,7 @@ public class PollingFileWatcherService : IFileWatcherService
     private bool _disposed = false;
     private bool _isWatching = false;
     private Timer? _cleanupTimer;
-    private Dictionary<int, Racer> _racers = new Dictionary<int, Racer>();
+    private Dictionary<string, Racer> _racers = new Dictionary<string, Racer>();
     private SoundNotificationService? _soundNotificationService;
     private readonly SemaphoreSlim _pollingSemaphore = new SemaphoreSlim(1, 1); // Prevents overlapping polling cycles
     private const int PollingIntervalSeconds = 10;
@@ -35,7 +35,7 @@ public class PollingFileWatcherService : IFileWatcherService
     public event EventHandler? RacesUpdated;
     public event EventHandler? RacersUpdated;
 
-    public IReadOnlyDictionary<int, Racer> Racers
+    public IReadOnlyDictionary<string, Racer> Racers
     {
         get
         {

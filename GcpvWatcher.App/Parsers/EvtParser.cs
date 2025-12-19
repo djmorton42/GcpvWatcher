@@ -75,7 +75,7 @@ public class EvtParser
         var raceInfoLine = lines[raceInfoLineIndex];
         var raceInfo = ParseRaceInfoLine(raceInfoLine);
         
-        var racers = new Dictionary<int, int>();
+        var racers = new Dictionary<string, int>();
         
         // Parse racer lines that follow the race info line
         for (int i = raceInfoLineIndex + 1; i < lines.Count; i++)
@@ -144,7 +144,7 @@ public class EvtParser
         }
     }
 
-    private (int RacerId, int Lane)? ParseRacerLine(string line)
+    private (string RacerId, int Lane)? ParseRacerLine(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
             return null;
@@ -170,10 +170,11 @@ public class EvtParser
 
             var record = records[0];
             
-            // Validate racer ID
-            if (!int.TryParse(record.RacerId.Trim(), out var racerId))
+            // Validate racer ID (must not be empty, can be alphanumeric)
+            var racerId = record.RacerId.Trim();
+            if (string.IsNullOrEmpty(racerId))
             {
-                throw new ArgumentException($"Invalid racer ID format: {record.RacerId}");
+                throw new ArgumentException($"Invalid racer ID format: racer ID cannot be empty");
             }
 
             // Validate lane
