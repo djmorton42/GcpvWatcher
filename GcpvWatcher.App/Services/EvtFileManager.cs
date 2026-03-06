@@ -8,6 +8,7 @@ using GcpvWatcher.App.Comparers;
 using CsvHelper;
 using CsvHelper.Configuration;
 using System.Globalization;
+using System.Threading;
 
 namespace GcpvWatcher.App.Services;
 
@@ -589,35 +590,77 @@ public class EvtFileManager : IDisposable
         catch (Exception ex)
         {
             ApplicationLogger.LogException("Error creating EVT backup", ex);
-            // Don't throw - backup failure shouldn't prevent EVT file updates
+            // Rethrow lock-related errors so WriteRacesToEvtFile can retry; swallow others so backup failure doesn't block updates
+            if (IsLockRelatedException(ex))
+                throw;
         }
+    }
+
+    /// <summary>
+    /// Returns true if the exception is likely a file/directory lock (transient); used to decide whether to retry.
+    /// </summary>
+    private static bool IsLockRelatedException(Exception ex)
+    {
+        var t = ex.GetType();
+        if (t != typeof(IOException) && t != typeof(UnauthorizedAccessException))
+            return false;
+        var msg = (ex.Message ?? "").ToLowerInvariant();
+        return msg.Contains("being used by another process") ||
+               msg.Contains("cannot access the file") ||
+               msg.Contains("access to the path is denied") ||
+               msg.Contains("file is locked") ||
+               msg.Contains("sharing violation") ||
+               msg.Contains("the process cannot access") ||
+               msg.Contains("used by another process");
     }
 
     private void WriteRacesToEvtFile(IEnumerable<Race> races)
     {
+        const int maxAttempts = 3;
+        var backoffMs = new[] { 50, 100, 200 };
+
         // Use the main lock to ensure only one thread writes to the EVT file at a time
         lock (_lockObject)
         {
-            // Create backup before writing (now inside the main lock)
-            CreateBackupIfEvtFileExists();
-            
-            var evtContent = GenerateEvtContent(races);
-            var encoding = AppConfigService.GetOutputEncoding(_config.OutputEncoding);
-            
-            // Write to a unique temporary file first, then move atomically
-            // This prevents directory locking issues on Windows and avoids temp file conflicts
-            var tempFilePath = _lynxEvtFilePath + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
-            using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
-            using (var writer = new StreamWriter(fileStream, encoding))
+            Exception? lastException = null;
+            for (var attempt = 0; attempt < maxAttempts; attempt++)
             {
-                writer.Write(evtContent);
+                try
+                {
+                    if (attempt > 0)
+                    {
+                        ApplicationLogger.Log($"Lynx.evt write attempt {attempt} failed (lock). Retrying in {backoffMs[attempt - 1]}ms.");
+                        Thread.Sleep(backoffMs[attempt - 1]);
+                    }
+
+                    // Create backup before writing (now inside the main lock)
+                    CreateBackupIfEvtFileExists();
+
+                    var evtContent = GenerateEvtContent(races);
+                    var encoding = AppConfigService.GetOutputEncoding(_config.OutputEncoding);
+
+                    // Write to a unique temporary file first, then move atomically
+                    // This prevents directory locking issues on Windows and avoids temp file conflicts
+                    var tempFilePath = _lynxEvtFilePath + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+                    using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var writer = new StreamWriter(fileStream, encoding))
+                    {
+                        writer.Write(evtContent);
+                    }
+
+                    // Atomic move operation - this is safe on Windows and prevents partial reads
+                    File.Move(tempFilePath, _lynxEvtFilePath, true);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    if (attempt >= maxAttempts - 1 || !IsLockRelatedException(ex))
+                        throw;
+                    ApplicationLogger.Log($"Lynx.evt file locked (attempt {attempt + 1}/{maxAttempts}), will retry after backoff: {ex.Message}");
+                }
             }
-            
-            // Atomic move operation - this is safe on Windows and prevents partial reads
-            File.Move(tempFilePath, _lynxEvtFilePath, true);
         }
-        
-        //WatcherLogger.Log($"Updated Lynx.evt with {races.Count()} races");
     }
 
     private string GenerateEvtContent(IEnumerable<Race> races)
