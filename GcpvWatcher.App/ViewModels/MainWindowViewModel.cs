@@ -496,7 +496,10 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     {
         // Unsubscribe from logger events
         WatcherLogger.LogMessage -= OnLogMessage;
-        
+
+        // Persist user preferences (including Consolidate Single-Racer Races checkbox) on exit
+        SaveUserPreferences();
+
         // Stop watching and dispose file watcher asynchronously
         if (_fileWatcherService != null)
         {

@@ -536,7 +536,8 @@ public class EvtFileManager : IDisposable
             result[result.Count - 1] = last with
             {
                 RaceNumber = newRaceNumber,
-                Racers = newRacers
+                Racers = newRacers,
+                IsConsolidated = true
             };
         }
 

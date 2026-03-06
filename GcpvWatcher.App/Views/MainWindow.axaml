@@ -11,6 +11,9 @@
     <Window.Resources>
         <converters:RacersToStringConverter x:Key="RacersToStringConverter" />
         <converters:BoolToBackgroundConverter x:Key="BoolToBackgroundConverter" />
+        <converters:RaceToBackgroundConverter x:Key="RaceToBackgroundConverter" />
+        <converters:RaceBackgroundMultiConverter x:Key="RaceBackgroundMultiConverter" />
+        <converters:RaceNumberToIsConsolidatedConverter x:Key="RaceNumberToIsConsolidatedConverter" />
     </Window.Resources>
     
     <Window.Styles>
@@ -175,12 +178,17 @@
                     <ItemsControl ItemsSource="{Binding Races}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{Binding IsFromKeepFile, Converter={StaticResource BoolToBackgroundConverter}}" 
-                                        BorderBrush="DarkGray" 
+                                <Border BorderBrush="DarkGray" 
                                         BorderThickness="1" 
                                         CornerRadius="3" 
                                         Margin="0,2" 
                                         Padding="8">
+                                    <Border.Background>
+                                        <MultiBinding Converter="{StaticResource RaceBackgroundMultiConverter}">
+                                            <Binding Path="IsFromKeepFile" />
+                                            <Binding Path="RaceNumber" />
+                                        </MultiBinding>
+                                    </Border.Background>
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="Race " 
@@ -195,6 +203,12 @@
                                                        Foreground="DarkOrange"
                                                        Margin="5,0,0,0"
                                                        IsVisible="{Binding IsFromKeepFile}" />
+                                            <TextBlock Text=" (Consolidated)" 
+                                                       FontWeight="Normal" 
+                                                       FontSize="10" 
+                                                       Foreground="DarkGreen"
+                                                       Margin="5,0,0,0"
+                                                       IsVisible="{Binding RaceNumber, Converter={StaticResource RaceNumberToIsConsolidatedConverter}}" />
                                         </StackPanel>
                                         <TextBlock Text="{Binding RaceTitle}" 
                                                    FontSize="11" 
