@@ -503,7 +503,12 @@ public class FileWatcherService : IFileWatcherService
 
     public IEnumerable<Race> GetAllRaces()
     {
-        return _evtFileManager.GetAllRaces();
+        return _evtFileManager.GetRacesForDisplay();
+    }
+
+    public void RefreshEvtFile()
+    {
+        _evtFileManager.RefreshEvtFile();
     }
 
     private void CleanupOrphanedRaces()

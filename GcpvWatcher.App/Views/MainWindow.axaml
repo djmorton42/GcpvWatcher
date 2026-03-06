@@ -51,6 +51,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -135,8 +136,14 @@
                        Foreground="{Binding StatusColor}" />
         </Grid>
 
+        <!-- Consolidate Single-Racer Races -->
+        <CheckBox Grid.Row="6"
+                  Content="Consolidate Single-Racer Races"
+                  IsChecked="{Binding ConsolidateSingleRacerRaces}"
+                  Margin="0,0,0,15" />
+
         <!-- Control Buttons -->
-        <StackPanel Grid.Row="6" 
+        <StackPanel Grid.Row="7" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
                     Spacing="15"
@@ -158,7 +165,7 @@
         </StackPanel>
 
         <!-- Tabbed Content -->
-        <TabControl Grid.Row="7" 
+        <TabControl Grid.Row="8" 
                     Margin="0,0,0,0"
                     x:Name="MainTabControl"
                     SelectionChanged="OnTabSelectionChanged">

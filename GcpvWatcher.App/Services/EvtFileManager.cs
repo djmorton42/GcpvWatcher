@@ -96,6 +96,125 @@ public class EvtFileManager : IDisposable
     }
 
     /// <summary>
+    /// Returns the races that should be shown in the UI and written to Lynx.evt.
+    /// When ConsolidateSingleRacerRaces is enabled, single-racer races are merged into the previous race in the same series.
+    /// </summary>
+    /// <param name="onConsolidate">Optional callback when a race is consolidated (singleRaceNumber, previousRaceNumber, newCombinedNumber). Used to log only when a source file change triggers the write.</param>
+    public IEnumerable<Race> GetRacesForDisplay(Action<string, string, string>? onConsolidate = null)
+    {
+        lock (_lockObject)
+        {
+            var allRaces = GetAllRaces().ToList();
+            if (_config.ConsolidateSingleRacerRaces)
+            {
+                // Drop component races when their consolidated form exists so we don't output 37C, 37CD and 37D.
+                allRaces = RemoveComponentRacesWhenConsolidatedPresent(allRaces);
+                allRaces = ConsolidateSingleRacerRaces(allRaces, onConsolidate).ToList();
+            }
+            else
+            {
+                // When consolidation is off: drop consolidated races when we already have all components (avoid duplicates),
+                // then expand any remaining consolidated races so toggling the checkbox changes the output.
+                allRaces = RemoveConsolidatedRacesWhenComponentsPresent(allRaces);
+                allRaces = ExpandConsolidatedRaces(allRaces).ToList();
+            }
+            return allRaces;
+        }
+    }
+
+    /// <summary>
+    /// When we have both a consolidated race (e.g. 37CD) and its components (37C, 37D) from different sources,
+    /// remove the component races so we don't output 37C and 37CD separately.
+    /// </summary>
+    private static List<Race> RemoveComponentRacesWhenConsolidatedPresent(List<Race> races)
+    {
+        var componentRaceNumbers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var race in races)
+        {
+            var (num, letters) = RaceNumberComparer.ParseRaceNumber(race.RaceNumber);
+            if (letters.Length > 1)
+            {
+                foreach (var letter in letters)
+                    componentRaceNumbers.Add(num.ToString() + letter);
+            }
+        }
+        if (componentRaceNumbers.Count == 0)
+            return races;
+        return races.Where(r => !componentRaceNumbers.Contains(r.RaceNumber)).ToList();
+    }
+
+    /// <summary>
+    /// When consolidation is off: remove consolidated races (e.g. 37CD) when all their components (37C, 37D) are already in the list,
+    /// so we don't output 37C, 37D and also an expanded 37C, 37D from 37CD.
+    /// </summary>
+    private static List<Race> RemoveConsolidatedRacesWhenComponentsPresent(List<Race> races)
+    {
+        var raceNumbers = races.Select(r => r.RaceNumber).ToHashSet(StringComparer.Ordinal);
+        return races.Where(race =>
+        {
+            var (num, letters) = RaceNumberComparer.ParseRaceNumber(race.RaceNumber);
+            if (letters.Length <= 1) return true;
+            foreach (var letter in letters)
+            {
+                if (!raceNumbers.Contains(num.ToString() + letter))
+                    return true;
+            }
+            return false;
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Expands consolidated races (e.g. 37CD) into component races (37C, 37D) by splitting racers by lane.
+    /// Last letter gets the last lane (1 racer), previous letters get 1 racer each from the end, first letter gets the rest.
+    /// </summary>
+    private static IEnumerable<Race> ExpandConsolidatedRaces(List<Race> races)
+    {
+        var result = new List<Race>();
+        var comparer = new RaceNumberComparer();
+        foreach (var race in races.OrderBy(r => r, comparer))
+        {
+            var (num, letters) = RaceNumberComparer.ParseRaceNumber(race.RaceNumber);
+            if (letters.Length <= 1)
+            {
+                result.Add(race);
+                continue;
+            }
+            var orderedRacers = race.Racers.OrderBy(kvp => kvp.Value).ToList();
+            var n = letters.Length;
+            if (orderedRacers.Count < n)
+            {
+                result.Add(race);
+                continue;
+            }
+            var start = 0;
+            for (var i = 0; i < n; i++)
+            {
+                var count = i == 0 ? orderedRacers.Count - (n - 1) : 1;
+                var segment = orderedRacers.Skip(start).Take(count).ToList();
+                start += count;
+                var componentNumber = num.ToString() + letters[i];
+                var racersByLane = new Dictionary<string, int>();
+                for (var j = 0; j < segment.Count; j++)
+                    racersByLane[segment[j].Key] = j + 1;
+                result.Add(race with { RaceNumber = componentNumber, Racers = racersByLane });
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Rewrites the Lynx.evt file with the current races and current consolidation setting.
+    /// Call this when the consolidation option changes so the file on disk matches the display.
+    /// </summary>
+    public void RefreshEvtFile()
+    {
+        lock (_lockObject)
+        {
+            WriteAllRacesToEvtFile();
+        }
+    }
+
+    /// <summary>
     /// Sets existing races from EVT file without triggering the loading logic
     /// </summary>
     /// <param name="races">The races to set</param>
@@ -237,13 +356,33 @@ public class EvtFileManager : IDisposable
             // Write to EVT file within the same lock to prevent lost updates
             // If this fails, the caller will remove the file from hash tracking
             // so it will be re-processed on the next polling cycle
-            WriteAllRacesToEvtFile();
+            var raceNumbersFromThisFile = racesList.Select(r => r.RaceNumber).ToHashSet();
+            WriteAllRacesToEvtFile(logConsolidation: true, raceNumbersFromChangedFile: raceNumbersFromThisFile);
         }
 
         // Notify that races have been updated
         RacesUpdated?.Invoke(this, EventArgs.Empty);
-        
+
         return stats;
+    }
+
+    /// <summary>
+    /// Returns true if the race is in active or keep, or (for consolidated races like 37CD) all component races (37C, 37D) are in active.
+    /// </summary>
+    private static bool IsRaceCoveredByActiveOrKeep(string raceNumber, Dictionary<string, Race> activeRaces, HashSet<string> keepRaceNumbers)
+    {
+        if (activeRaces.ContainsKey(raceNumber) || keepRaceNumbers.Contains(raceNumber))
+            return true;
+        var (num, letters) = RaceNumberComparer.ParseRaceNumber(raceNumber);
+        if (letters.Length <= 1)
+            return false;
+        foreach (var letter in letters)
+        {
+            var component = num.ToString() + letter;
+            if (!activeRaces.ContainsKey(component))
+                return false;
+        }
+        return true;
     }
 
     public void CleanupOrphanedRaces(IEnumerable<string> activeSourceFiles)
@@ -277,10 +416,11 @@ public class EvtFileManager : IDisposable
                 ? _fileRaces["evt_file_races"] 
                 : new List<Race>();
 
-            // Find races in EVT that are not in any active CSV files AND not in keep file
-            // Keep races should never be considered orphaned
+            // Find races in EVT that are not in any active CSV files AND not in keep file.
+            // Keep races should never be considered orphaned.
+            // Consolidated races (e.g. 37CD) are not orphaned when all their component races (37C, 37D) are in active CSVs.
             var orphanedRaces = evtRaces
-                .Where(race => !activeRaces.ContainsKey(race.RaceNumber) && !keepRaceNumbers.Contains(race.RaceNumber))
+                .Where(race => !IsRaceCoveredByActiveOrKeep(race.RaceNumber, activeRaces, keepRaceNumbers))
                 .ToList();
 
             if (orphanedRaces.Count > 0)
@@ -288,9 +428,9 @@ public class EvtFileManager : IDisposable
                 ApplicationLogger.Log($"Found {orphanedRaces.Count} orphaned races to remove: {string.Join(", ", orphanedRaces.Select(r => r.RaceNumber))}");
                 
                 // Remove orphaned races from EVT races
-                // Keep races that are in active CSV files OR in keep file
+                // Keep races that are in active CSV files, in keep file, or are consolidated and all components are active
                 var updatedEvtRaces = evtRaces
-                    .Where(race => activeRaces.ContainsKey(race.RaceNumber) || keepRaceNumbers.Contains(race.RaceNumber))
+                    .Where(race => IsRaceCoveredByActiveOrKeep(race.RaceNumber, activeRaces, keepRaceNumbers))
                     .ToList();
                 
                 _fileRaces["evt_file_races"] = updatedEvtRaces;
@@ -332,11 +472,74 @@ public class EvtFileManager : IDisposable
         RacesUpdated?.Invoke(this, EventArgs.Empty);
     }
 
-    private void WriteAllRacesToEvtFile()
+    private void WriteAllRacesToEvtFile(bool logConsolidation = false, IReadOnlySet<string>? raceNumbersFromChangedFile = null)
     {
-        // Use the same deduplication logic as GetAllRaces()
-        var allRaces = GetAllRaces().ToList();
-        WriteRacesToEvtFile(allRaces);
+        Action<string, string, string>? onConsolidate = null;
+        if (logConsolidation && raceNumbersFromChangedFile != null)
+        {
+            onConsolidate = (single, into, combined) =>
+            {
+                if (raceNumbersFromChangedFile.Contains(single) || raceNumbersFromChangedFile.Contains(into))
+                {
+                    ApplicationLogger.Log($"Consolidated race {single} (1 racer) into {into} -> {combined}");
+                    WatcherLogger.Log($"Consolidated race {single} into {into} -> {combined}");
+                }
+            };
+        }
+        var racesToWrite = GetRacesForDisplay(onConsolidate).ToList();
+        WriteRacesToEvtFile(racesToWrite);
+    }
+
+    /// <summary>
+    /// Merges single-racer races into the previous race in the same numerical series.
+    /// The previous race's event number becomes combined (e.g. 15B + 15C -> 15BC); the single-racer race is not emitted.
+    /// </summary>
+    /// <param name="onConsolidate">Optional callback when a race is consolidated (singleRaceNumber, previousRaceNumber, newCombinedNumber).</param>
+    private static IEnumerable<Race> ConsolidateSingleRacerRaces(IEnumerable<Race> races, Action<string, string, string>? onConsolidate = null)
+    {
+        var comparer = new RaceNumberComparer();
+        var ordered = races.OrderBy(r => r, comparer).ToList();
+        var result = new List<Race>();
+
+        foreach (var race in ordered)
+        {
+            if (race.Racers.Count != 1)
+            {
+                result.Add(race);
+                continue;
+            }
+
+            if (result.Count == 0)
+            {
+                result.Add(race);
+                continue;
+            }
+
+            var last = result[result.Count - 1];
+            var (num, letter) = RaceNumberComparer.ParseRaceNumber(race.RaceNumber);
+            var (lastNum, lastLetters) = RaceNumberComparer.ParseRaceNumber(last.RaceNumber);
+
+            if (num != lastNum)
+            {
+                result.Add(race);
+                continue;
+            }
+
+            var newLane = last.Racers.Values.Max() + 1;
+            var singleRacer = race.Racers.Single();
+            var newRacers = new Dictionary<string, int>(last.Racers) { [singleRacer.Key] = newLane };
+            // Avoid duplicating the letter when the single-racer race is already included (e.g. 37CD + 37D -> 37CD not 37CDD)
+            var newLetters = lastLetters.EndsWith(letter, StringComparison.Ordinal) ? lastLetters : lastLetters + letter;
+            var newRaceNumber = num.ToString() + newLetters;
+            onConsolidate?.Invoke(race.RaceNumber, last.RaceNumber, newRaceNumber);
+            result[result.Count - 1] = last with
+            {
+                RaceNumber = newRaceNumber,
+                Racers = newRacers
+            };
+        }
+
+        return result;
     }
 
     private void CreateBackupIfEvtFileExists()

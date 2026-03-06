@@ -23,15 +23,18 @@ public class RaceNumberComparer : IComparer<Race>
         return string.Compare(xRaceNumber.Letter, yRaceNumber.Letter, StringComparison.Ordinal);
     }
 
-    private static (int Number, string Letter) ParseRaceNumber(string raceNumber)
+    /// <summary>
+    /// Parses a race number into numeric and letter parts (e.g. "15B" -> (15, "B"), "15BC" -> (15, "BC")).
+    /// </summary>
+    public static (int Number, string Letter) ParseRaceNumber(string raceNumber)
     {
-        var match = Regex.Match(raceNumber, @"^(\d+)([A-Z])$");
+        var match = Regex.Match(raceNumber, @"^(\d+)([A-Z]+)$");
         if (!match.Success)
             throw new ArgumentException($"Invalid race number format: {raceNumber}");
 
         var number = int.Parse(match.Groups[1].Value);
         var letter = match.Groups[2].Value;
-        
+
         return (number, letter);
     }
 }

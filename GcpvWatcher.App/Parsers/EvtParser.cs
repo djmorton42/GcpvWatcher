@@ -123,9 +123,9 @@ public class EvtParser
 
             var record = records[0];
             
-            // Validate race number format
+            // Validate race number format (e.g. 37A, 37CD for consolidated races)
             var raceNumber = record.RaceNumber.Trim();
-            if (string.IsNullOrEmpty(raceNumber) || !Regex.IsMatch(raceNumber, @"^\d+[A-Z]$"))
+            if (string.IsNullOrEmpty(raceNumber) || !Regex.IsMatch(raceNumber, @"^\d+[A-Z]+$"))
             {
                 throw new ArgumentException($"Invalid race number format: {raceNumber}");
             }

@@ -24,6 +24,13 @@ public class AppConfig
 
     [JsonPropertyName("FileWatcherStrategy")]
     public string FileWatcherStrategy { get; set; } = "event";
+
+    /// <summary>
+    /// When true, single-racer races are merged into the previous race in the same numerical series when building Lynx.evt.
+    /// Set at runtime from user preferences; not loaded from appconfig.json.
+    /// </summary>
+    [JsonIgnore]
+    public bool ConsolidateSingleRacerRaces { get; set; }
 }
 
 public class AppConfigDto

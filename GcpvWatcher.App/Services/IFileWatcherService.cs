@@ -54,6 +54,12 @@ public interface IFileWatcherService : IDisposable
     IEnumerable<Race> GetAllRaces();
 
     /// <summary>
+    /// Rewrites the Lynx.evt file with the current races and current consolidation setting.
+    /// Use when the consolidation option is toggled so the file on disk matches the display.
+    /// </summary>
+    void RefreshEvtFile();
+
+    /// <summary>
     /// Disposes the service asynchronously
     /// </summary>
     Task DisposeAsync();

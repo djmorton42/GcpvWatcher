@@ -122,6 +122,27 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 
     public bool CanBrowseFinishLynxDirectory => !_isWatching;
 
+    public bool ConsolidateSingleRacerRaces
+    {
+        get => _userPreferences.ConsolidateSingleRacerRaces;
+        set
+        {
+            if (_userPreferences.ConsolidateSingleRacerRaces != value)
+            {
+                _userPreferences.ConsolidateSingleRacerRaces = value;
+                if (_appConfig != null)
+                    _appConfig.ConsolidateSingleRacerRaces = value;
+                OnPropertyChanged();
+                SaveUserPreferences();
+                if (_isWatching && _fileWatcherService != null)
+                {
+                    _fileWatcherService.RefreshEvtFile();
+                    RefreshRacesDisplay();
+                }
+            }
+        }
+    }
+
     public ObservableCollection<Race> Races => _races;
 
     public Dictionary<string, Racer> Racers => _fileWatcherService?.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, Racer>();
@@ -225,6 +246,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 return;
             }
 
+            _appConfig.ConsolidateSingleRacerRaces = _userPreferences.ConsolidateSingleRacerRaces;
             _fileWatcherService = CreateFileWatcherService(_appConfig);
             _fileWatcherService.FileProcessed += OnFileProcessed;
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
@@ -327,7 +349,9 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 // Update raw EVT content when loading preferences
                 UpdateRawEvtContent();
             }
-            
+
+            OnPropertyChanged(nameof(ConsolidateSingleRacerRaces));
+
             ApplicationLogger.Log("User preferences loaded successfully");
         }
         catch (Exception ex)
@@ -383,25 +407,25 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     {
         if (_fileWatcherService != null)
         {
-            var allRaces = _fileWatcherService.GetAllRaces().ToList();
-            
-            // Update racer data in static service
             var racers = _fileWatcherService.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             RacerDataService.UpdateRacers(racers);
-            
-            // Update the races collection on the UI thread
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                _races.Clear();
-                foreach (var race in allRaces)
-                {
-                    _races.Add(race);
-                }
-                
-                // Update raw EVT content when races are updated
-                UpdateRawEvtContent();
-            });
+            RefreshRacesDisplay();
         }
+    }
+
+    private void RefreshRacesDisplay()
+    {
+        if (_fileWatcherService == null) return;
+        var allRaces = _fileWatcherService.GetAllRaces().ToList();
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            _races.Clear();
+            foreach (var race in allRaces)
+            {
+                _races.Add(race);
+            }
+            UpdateRawEvtContent();
+        });
     }
 
     private void OnRacersUpdated(object? sender, EventArgs e)

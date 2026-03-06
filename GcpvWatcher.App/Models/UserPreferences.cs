@@ -7,6 +7,7 @@ public class UserPreferences
 {
     public string WatchDirectory { get; set; } = string.Empty;
     public string FinishLynxDirectory { get; set; } = string.Empty;
+    public bool ConsolidateSingleRacerRaces { get; set; }
 
     public static UserPreferences Load()
     {
