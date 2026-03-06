@@ -37,9 +37,9 @@ public class EvtParserTests
         Assert.Equal("Race Title A", race1.RaceTitle);
         Assert.Equal(4.5m, race1.NumberOfLaps);
         Assert.Equal(3, race1.Racers.Count);
-        Assert.Equal(1, race1.Racers[1051]);
-        Assert.Equal(2, race1.Racers[2010]);
-        Assert.Equal(3, race1.Racers[681]);
+        Assert.Equal(1, race1.Racers["1051"]);
+        Assert.Equal(2, race1.Racers["2010"]);
+        Assert.Equal(3, race1.Racers["681"]);
         
         // Check second race
         var race2 = raceList[1];
@@ -47,8 +47,8 @@ public class EvtParserTests
         Assert.Equal("Race Title B", race2.RaceTitle);
         Assert.Equal(3.0m, race2.NumberOfLaps);
         Assert.Equal(2, race2.Racers.Count);
-        Assert.Equal(1, race2.Racers[563]);
-        Assert.Equal(2, race2.Racers[617]);
+        Assert.Equal(1, race2.Racers["563"]);
+        Assert.Equal(2, race2.Racers["617"]);
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public class EvtParserTests
         Assert.Equal("21A", race.RaceNumber);
         Assert.Equal("Race Title", race.RaceTitle);
         Assert.Equal(4.5m, race.NumberOfLaps);
-        Assert.Equal(1, race.Racers[1051]);
-        Assert.Equal(2, race.Racers[2010]);
+        Assert.Equal(1, race.Racers["1051"]);
+        Assert.Equal(2, race.Racers["2010"]);
     }
 
     [Fact]
@@ -255,9 +255,9 @@ public class EvtParserTests
     }
 
     [Fact]
-    public async Task ParseAsync_WithInvalidRacerId_ThrowsException()
+    public async Task ParseAsync_WithAlphanumericRacerId_AcceptsRacer()
     {
-        // Arrange
+        // Arrange - EvtParser accepts alphanumeric racer IDs (only empty is invalid)
         var testData = new[]
         {
             "21A,,,\"Race Title\",,,,,,,,,4.5",
@@ -266,8 +266,14 @@ public class EvtParserTests
         var provider = new EventDataStaticProvider(testData);
         var parser = new EvtParser(provider);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => parser.ParseAsync());
+        // Act
+        var races = await parser.ParseAsync();
+        var raceList = races.ToList();
+
+        // Assert
+        Assert.Single(raceList);
+        Assert.Equal(1, raceList[0].Racers.Count);
+        Assert.Equal(1, raceList[0].Racers["InvalidId"]);
     }
 
     [Fact]
@@ -345,9 +351,9 @@ public class EvtParserTests
         Assert.Single(raceList);
         var race = raceList[0];
         Assert.Equal(3, race.Racers.Count);
-        Assert.Equal(1, race.Racers[1051]);
-        Assert.Equal(1, race.Racers[2010]); // Last racer with same lane overwrites
-        Assert.Equal(2, race.Racers[681]);
+        Assert.Equal(1, race.Racers["1051"]);
+        Assert.Equal(1, race.Racers["2010"]); // Last racer with same lane overwrites
+        Assert.Equal(2, race.Racers["681"]);
     }
 
     [Fact]

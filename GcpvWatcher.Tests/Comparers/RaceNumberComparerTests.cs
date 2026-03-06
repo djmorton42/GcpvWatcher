@@ -12,8 +12,8 @@ public class RaceNumberComparerTests
     public void Compare_WithSameRaceNumbers_ReturnsZero()
     {
         // Arrange
-        var race1 = new Race("21A", "Race 1", 4.5m, new Dictionary<int, int>());
-        var race2 = new Race("21A", "Race 2", 3.0m, new Dictionary<int, int>());
+        var race1 = new Race("21A", "Race 1", 4.5m, new Dictionary<string, int>());
+        var race2 = new Race("21A", "Race 2", 3.0m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(race1, race2);
@@ -26,8 +26,8 @@ public class RaceNumberComparerTests
     public void Compare_WithDifferentNumbers_SortsByNumber()
     {
         // Arrange
-        var race1 = new Race("100A", "Race 1", 4.5m, new Dictionary<int, int>());
-        var race2 = new Race("3A", "Race 2", 3.0m, new Dictionary<int, int>());
+        var race1 = new Race("100A", "Race 1", 4.5m, new Dictionary<string, int>());
+        var race2 = new Race("3A", "Race 2", 3.0m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(race1, race2);
@@ -40,8 +40,8 @@ public class RaceNumberComparerTests
     public void Compare_WithSameNumberDifferentLetters_SortsByLetter()
     {
         // Arrange
-        var race1 = new Race("21B", "Race 1", 4.5m, new Dictionary<int, int>());
-        var race2 = new Race("21A", "Race 2", 3.0m, new Dictionary<int, int>());
+        var race1 = new Race("21B", "Race 1", 4.5m, new Dictionary<string, int>());
+        var race2 = new Race("21A", "Race 2", 3.0m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(race1, race2);
@@ -56,11 +56,11 @@ public class RaceNumberComparerTests
         // Arrange
         var races = new[]
         {
-            new Race("100A", "Race 100A", 1.0m, new Dictionary<int, int>()),
-            new Race("3B", "Race 3B", 2.0m, new Dictionary<int, int>()),
-            new Race("3A", "Race 3A", 3.0m, new Dictionary<int, int>()),
-            new Race("22A", "Race 22A", 4.0m, new Dictionary<int, int>()),
-            new Race("10A", "Race 10A", 5.0m, new Dictionary<int, int>())
+            new Race("100A", "Race 100A", 1.0m, new Dictionary<string, int>()),
+            new Race("3B", "Race 3B", 2.0m, new Dictionary<string, int>()),
+            new Race("3A", "Race 3A", 3.0m, new Dictionary<string, int>()),
+            new Race("22A", "Race 22A", 4.0m, new Dictionary<string, int>()),
+            new Race("10A", "Race 10A", 5.0m, new Dictionary<string, int>())
         };
 
         // Act
@@ -78,7 +78,7 @@ public class RaceNumberComparerTests
     public void Compare_WithNullFirst_ReturnsNegative()
     {
         // Arrange
-        var race = new Race("21A", "Race", 4.5m, new Dictionary<int, int>());
+        var race = new Race("21A", "Race", 4.5m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(null, race);
@@ -91,7 +91,7 @@ public class RaceNumberComparerTests
     public void Compare_WithNullSecond_ReturnsPositive()
     {
         // Arrange
-        var race = new Race("21A", "Race", 4.5m, new Dictionary<int, int>());
+        var race = new Race("21A", "Race", 4.5m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(race, null);
@@ -114,8 +114,8 @@ public class RaceNumberComparerTests
     public void Compare_WithInvalidRaceNumber_ThrowsArgumentException()
     {
         // Arrange
-        var race1 = new Race("Invalid", "Race 1", 4.5m, new Dictionary<int, int>());
-        var race2 = new Race("21A", "Race 2", 3.0m, new Dictionary<int, int>());
+        var race1 = new Race("Invalid", "Race 1", 4.5m, new Dictionary<string, int>());
+        var race2 = new Race("21A", "Race 2", 3.0m, new Dictionary<string, int>());
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => _comparer.Compare(race1, race2));
@@ -125,8 +125,8 @@ public class RaceNumberComparerTests
     public void Compare_WithSingleDigitNumbers_SortsCorrectly()
     {
         // Arrange
-        var race1 = new Race("9A", "Race 9A", 4.5m, new Dictionary<int, int>());
-        var race2 = new Race("10A", "Race 10A", 3.0m, new Dictionary<int, int>());
+        var race1 = new Race("9A", "Race 9A", 4.5m, new Dictionary<string, int>());
+        var race2 = new Race("10A", "Race 10A", 3.0m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(race1, race2);
@@ -139,8 +139,8 @@ public class RaceNumberComparerTests
     public void Compare_WithLargeNumbers_SortsCorrectly()
     {
         // Arrange
-        var race1 = new Race("999Z", "Race 999Z", 4.5m, new Dictionary<int, int>());
-        var race2 = new Race("1000A", "Race 1000A", 3.0m, new Dictionary<int, int>());
+        var race1 = new Race("999Z", "Race 999Z", 4.5m, new Dictionary<string, int>());
+        var race2 = new Race("1000A", "Race 1000A", 3.0m, new Dictionary<string, int>());
 
         // Act
         var result = _comparer.Compare(race1, race2);

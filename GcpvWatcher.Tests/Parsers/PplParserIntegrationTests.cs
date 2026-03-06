@@ -21,17 +21,17 @@ public class PplParserIntegrationTests
         Assert.True(racers.Count > 0, "Should have parsed at least one racer from the file");
         
         // Check some specific racers from the file
-        Assert.True(racers.TryGetValue(116, out var lopez));
+        Assert.True(racers.TryGetValue("116", out var lopez));
         Assert.Equal("Lopez", lopez.LastName);
         Assert.Equal("Nancy", lopez.FirstName);
         Assert.Equal("St. Lawrence", lopez.Affiliation);
 
-        Assert.True(racers.TryGetValue(667, out var belanger));
+        Assert.True(racers.TryGetValue("667", out var belanger));
         Assert.Equal("Bélanger", belanger.LastName);
         Assert.Equal("Daniel", belanger.FirstName);
         Assert.Equal("CPV Gatineau", belanger.Affiliation);
 
-        Assert.True(racers.TryGetValue(693, out var baileyMartin));
+        Assert.True(racers.TryGetValue("693", out var baileyMartin));
         Assert.Equal("Bailey Martin", baileyMartin.LastName);
         Assert.Equal("Helen", baileyMartin.FirstName);
         Assert.Equal("Newmarket", baileyMartin.Affiliation);
@@ -140,22 +140,22 @@ public class PplParserIntegrationTests
             // Assert
             Assert.Equal(4, racers.Count);
             
-            Assert.True(racers.TryGetValue(100, out var racer100));
+            Assert.True(racers.TryGetValue("100", out var racer100));
             Assert.Equal("Smith", racer100.LastName);
             Assert.Equal("John", racer100.FirstName);
             Assert.Equal("Toronto", racer100.Affiliation);
 
-            Assert.True(racers.TryGetValue(101, out var racer101));
+            Assert.True(racers.TryGetValue("101", out var racer101));
             Assert.Equal("Johnson", racer101.LastName);
             Assert.Equal("Jane", racer101.FirstName);
             Assert.Equal("Montreal", racer101.Affiliation);
 
-            Assert.True(racers.TryGetValue(102, out var racer102));
+            Assert.True(racers.TryGetValue("102", out var racer102));
             Assert.Equal("Brown", racer102.LastName);
             Assert.Equal("Bob", racer102.FirstName);
             Assert.Equal("Kingston", racer102.Affiliation);
 
-            Assert.True(racers.TryGetValue(103, out var racer103));
+            Assert.True(racers.TryGetValue("103", out var racer103));
             Assert.Equal("Davis", racer103.LastName);
             Assert.Equal("Alice", racer103.FirstName);
             Assert.Equal("Hamilton", racer103.Affiliation);

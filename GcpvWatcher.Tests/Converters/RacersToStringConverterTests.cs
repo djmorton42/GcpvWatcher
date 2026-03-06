@@ -19,8 +19,8 @@ public class RacersToStringConverterTests
     public void Convert_WithNoRacers_ReturnsNoRacers()
     {
         // Arrange
-        var racers = new Dictionary<int, int>();
-        RacerDataService.UpdateRacers(new Dictionary<int, Racer>());
+        var racers = new Dictionary<string, int>();
+        RacerDataService.UpdateRacers(new Dictionary<string, Racer>());
 
         // Act
         var result = _converter.Convert(racers, typeof(string), null, CultureInfo.InvariantCulture);
@@ -33,12 +33,12 @@ public class RacersToStringConverterTests
     public void Convert_WithRacersButNoRacerData_ReturnsRacerIds()
     {
         // Arrange
-        var racers = new Dictionary<int, int>
+        var racers = new Dictionary<string, int>
         {
-            { 1, 1 },
-            { 2, 2 }
+            { "1", 1 },
+            { "2", 2 }
         };
-        RacerDataService.UpdateRacers(new Dictionary<int, Racer>());
+        RacerDataService.UpdateRacers(new Dictionary<string, Racer>());
 
         // Act
         var result = _converter.Convert(racers, typeof(string), null, CultureInfo.InvariantCulture);
@@ -51,15 +51,15 @@ public class RacersToStringConverterTests
     public void Convert_WithRacersAndRacerData_ReturnsRacerNames()
     {
         // Arrange
-        var racers = new Dictionary<int, int>
+        var racers = new Dictionary<string, int>
         {
-            { 1, 1 },
-            { 2, 2 }
+            { "1", 1 },
+            { "2", 2 }
         };
-        var racerData = new Dictionary<int, Racer>
+        var racerData = new Dictionary<string, Racer>
         {
-            { 1, new Racer(1, "Smith", "John", "Team A") },
-            { 2, new Racer(2, "Johnson", "Jane", "Team B") }
+            { "1", new Racer("1", "Smith", "John", "Team A") },
+            { "2", new Racer("2", "Johnson", "Jane", "Team B") }
         };
         RacerDataService.UpdateRacers(racerData);
 
@@ -74,16 +74,16 @@ public class RacersToStringConverterTests
     public void Convert_WithMixedRacerData_ReturnsNamesForKnownRacers()
     {
         // Arrange
-        var racers = new Dictionary<int, int>
+        var racers = new Dictionary<string, int>
         {
-            { 1, 1 },
-            { 2, 2 },
-            { 3, 3 }
+            { "1", 1 },
+            { "2", 2 },
+            { "3", 3 }
         };
-        var racerData = new Dictionary<int, Racer>
+        var racerData = new Dictionary<string, Racer>
         {
-            { 1, new Racer(1, "Smith", "John", "Team A") },
-            { 3, new Racer(3, "Brown", "Bob", "Team C") }
+            { "1", new Racer("1", "Smith", "John", "Team A") },
+            { "3", new Racer("3", "Brown", "Bob", "Team C") }
         };
         RacerDataService.UpdateRacers(racerData);
 
@@ -98,17 +98,17 @@ public class RacersToStringConverterTests
     public void Convert_OrdersByLane()
     {
         // Arrange
-        var racers = new Dictionary<int, int>
+        var racers = new Dictionary<string, int>
         {
-            { 3, 1 },
-            { 1, 3 },
-            { 2, 2 }
+            { "3", 1 },
+            { "1", 3 },
+            { "2", 2 }
         };
-        var racerData = new Dictionary<int, Racer>
+        var racerData = new Dictionary<string, Racer>
         {
-            { 1, new Racer(1, "Smith", "John", "Team A") },
-            { 2, new Racer(2, "Johnson", "Jane", "Team B") },
-            { 3, new Racer(3, "Brown", "Bob", "Team C") }
+            { "1", new Racer("1", "Smith", "John", "Team A") },
+            { "2", new Racer("2", "Johnson", "Jane", "Team B") },
+            { "3", new Racer("3", "Brown", "Bob", "Team C") }
         };
         RacerDataService.UpdateRacers(racerData);
 

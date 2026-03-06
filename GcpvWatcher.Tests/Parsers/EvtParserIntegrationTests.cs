@@ -49,11 +49,11 @@ public class EvtParserIntegrationTests
             Assert.Equal("ALL SKATERS, (500A No Pts 111M) Final", race1.RaceTitle);
             Assert.Equal(4.5m, race1.NumberOfLaps);
             Assert.Equal(5, race1.Racers.Count);
-            Assert.Equal(1, race1.Racers[1051]);
-            Assert.Equal(2, race1.Racers[2010]);
-            Assert.Equal(3, race1.Racers[681]);
-            Assert.Equal(4, race1.Racers[1231]);
-            Assert.Equal(5, race1.Racers[746]);
+            Assert.Equal(1, race1.Racers["1051"]);
+            Assert.Equal(2, race1.Racers["2010"]);
+            Assert.Equal(3, race1.Racers["681"]);
+            Assert.Equal(4, race1.Racers["1231"]);
+            Assert.Equal(5, race1.Racers["746"]);
             
             // Check second race
             var race2 = raceList[1];
@@ -61,11 +61,11 @@ public class EvtParserIntegrationTests
             Assert.Equal("ALL SKATERS, (500A No Pts 111M) Final", race2.RaceTitle);
             Assert.Equal(4.5m, race2.NumberOfLaps);
             Assert.Equal(5, race2.Racers.Count);
-            Assert.Equal(1, race2.Racers[563]);
-            Assert.Equal(2, race2.Racers[617]);
-            Assert.Equal(3, race2.Racers[531]);
-            Assert.Equal(4, race2.Racers[2014]);
-            Assert.Equal(5, race2.Racers[675]);
+            Assert.Equal(1, race2.Racers["563"]);
+            Assert.Equal(2, race2.Racers["617"]);
+            Assert.Equal(3, race2.Racers["531"]);
+            Assert.Equal(4, race2.Racers["2014"]);
+            Assert.Equal(5, race2.Racers["675"]);
         }
         finally
         {
