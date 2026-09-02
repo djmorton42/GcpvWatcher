@@ -44,13 +44,91 @@ public class GcpvExportParserTests
         Assert.Equal("25A", race.RaceNumber);
         Assert.Equal("1500 111M", race.TrackParams);
         Assert.Equal("Open Men B  male", race.RaceGroup);
-        Assert.Equal("Heat, 2 +2", race.Stage);
+        Assert.Equal("Heat (2 + 2)", race.Stage);
         Assert.Single(race.Racers);
         
         var racer = race.Racers[0];
         Assert.Equal("1", racer.Lane);
         Assert.Equal("689 PORTER, REGGIE", racer.Racer);
         Assert.Equal("Hamilton", racer.Affiliation);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithHeatAdvancementInStage_NormalizesAdvancement()
+    {
+        // Arrange — advancement embedded in stage ("Heat, 2 + 4"); no separate column
+        var testData = new[]
+        {
+            "\"Event :\",\"1000 111M\",\"Women A  female\",\"Stage :\",\"Heat, 2 + 4\",,,\"Race\",\"1C\",,\"Lane\",\"Skaters\",\"Club\",5,\"263 SKATER, ALEX\",\"Milton\",\"2/19/2026   6:16:57 PM\""
+        };
+        var provider = new GcpvExportDataStaticProvider(testData);
+        var parser = new GcpvExportParser(provider, _keyFields);
+
+        // Act
+        var race = (await parser.ParseAsync()).Single();
+
+        // Assert
+        Assert.Equal("1C", race.RaceNumber);
+        Assert.Equal("Heat (2 + 4)", race.Stage);
+        Assert.Equal("263 SKATER, ALEX", race.Racers[0].Racer);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithSemiFinalAdvancementColumn_AppendsNormalizedAdvancement()
+    {
+        // Arrange — stage has no advancement; separate column after race number does
+        var testData = new[]
+        {
+            "\"Event :\",\"1000 111M\",\"Women A  female\",\"Stage :\",\"Semi-Final, \",,,\"Race\",\"19C\",\"(5 + 0)\",\"Lane\",\"Skaters\",\"Club\",5,\"148 SKATER, JORDAN\",\"Oakville\",\"2/20/2026   3:31:37 PM\""
+        };
+        var provider = new GcpvExportDataStaticProvider(testData);
+        var parser = new GcpvExportParser(provider, _keyFields);
+
+        // Act
+        var race = (await parser.ParseAsync()).Single();
+
+        // Assert
+        Assert.Equal("19C", race.RaceNumber);
+        Assert.Equal("Semi-Final (5 + 0)", race.Stage);
+        Assert.Equal("148 SKATER, JORDAN", race.Racers[0].Racer);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithFinal_LeavesStageUnchanged()
+    {
+        // Arrange — no advancement in stage or columns
+        var testData = new[]
+        {
+            "\"Event :\",\"500 111M\",\"Women A  female\",\"Stage :\",\"Final\",,,\"Race\",\"31C\",\"Lane\",\"Skaters\",\"Club\",5,\"148 SKATER, JORDAN\",\"Oakville\",\"2/21/2026   12:58:23 PM\""
+        };
+        var provider = new GcpvExportDataStaticProvider(testData);
+        var parser = new GcpvExportParser(provider, _keyFields);
+
+        // Act
+        var race = (await parser.ParseAsync()).Single();
+
+        // Assert
+        Assert.Equal("31C", race.RaceNumber);
+        Assert.Equal("Final", race.Stage);
+        Assert.Equal("148 SKATER, JORDAN", race.Racers[0].Racer);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WhenAdvancementInStageAndColumn_PrefersStage()
+    {
+        // Arrange — conflicting markers; stage wins
+        var testData = new[]
+        {
+            "\"Event :\",\"1000 111M\",\"Women A  female\",\"Stage :\",\"Heat, 2 + 4\",,,\"Race\",\"1C\",\"(5 + 0)\",\"Lane\",\"Skaters\",\"Club\",5,\"263 SKATER, ALEX\",\"Milton\",\"2/19/2026   6:16:57 PM\""
+        };
+        var provider = new GcpvExportDataStaticProvider(testData);
+        var parser = new GcpvExportParser(provider, _keyFields);
+
+        // Act
+        var race = (await parser.ParseAsync()).Single();
+
+        // Assert
+        Assert.Equal("Heat (2 + 4)", race.Stage);
     }
 
     [Fact]
@@ -153,7 +231,7 @@ public class GcpvExportParserTests
         Assert.Equal("25A", race.RaceNumber);
         Assert.Equal("1500 111M", race.TrackParams);
         Assert.Equal("Open Men B  male", race.RaceGroup);
-        Assert.Equal("Heat, 2 +2", race.Stage);
+        Assert.Equal("Heat (2 + 2)", race.Stage);
         Assert.Single(race.Racers);
         
         var racer = race.Racers[0];
@@ -339,7 +417,7 @@ public class GcpvExportParserTests
         Assert.Equal("25A", race.RaceNumber);
         Assert.Equal("1500 111M", race.TrackParams);
         Assert.Equal("Open Men B  male", race.RaceGroup);
-        Assert.Equal("Heat, 2 +2", race.Stage);
+        Assert.Equal("Heat (2 + 2)", race.Stage);
         Assert.Single(race.Racers);
         
         var racer = race.Racers[0];
@@ -369,7 +447,7 @@ public class GcpvExportParserTests
         Assert.Equal("25A with # and ;", race.RaceNumber);
         Assert.Equal("1500 111M with # and ; special chars", race.TrackParams);
         Assert.Equal("Open Men B with, commas and quotes\"\"", race.RaceGroup);
-        Assert.Equal("Heat, 2 +2 with # and ;", race.Stage);
+        Assert.Equal("Heat (2 + 2) with # and ;", race.Stage);
         Assert.Single(race.Racers);
         
         var racer = race.Racers[0];

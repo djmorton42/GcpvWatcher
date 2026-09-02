@@ -45,7 +45,7 @@ public class GcpvExportParserRealWorldTests
         var race25A = raceList.First(r => r.RaceNumber == "25A");
         Assert.Equal("1500 111M", race25A.TrackParams);
         Assert.Equal("Open Men B", race25A.RaceGroup); // "male" should be removed
-        Assert.Equal("Heat, 2 +2", race25A.Stage);
+        Assert.Equal("Heat (2 + 2)", race25A.Stage);
         Assert.Equal(7, race25A.Racers.Count);
 
         // Verify specific racers in race 25A
@@ -65,7 +65,7 @@ public class GcpvExportParserRealWorldTests
         var race25B = raceList.First(r => r.RaceNumber == "25B");
         Assert.Equal("1500 111M", race25B.TrackParams);
         Assert.Equal("Open Men B", race25B.RaceGroup); // "male" should be removed
-        Assert.Equal("Heat, 2 +2", race25B.Stage);
+        Assert.Equal("Heat (2 + 2)", race25B.Stage);
         Assert.Equal(7, race25B.Racers.Count);
 
         // Verify specific racers in race 25B
@@ -81,7 +81,7 @@ public class GcpvExportParserRealWorldTests
         var race25C = raceList.First(r => r.RaceNumber == "25C");
         Assert.Equal("1500 111M", race25C.TrackParams);
         Assert.Equal("Open Men B", race25C.RaceGroup); // "male" should be removed
-        Assert.Equal("Heat, 2 +2", race25C.Stage);
+        Assert.Equal("Heat (2 + 2)", race25C.Stage);
         Assert.Equal(8, race25C.Racers.Count);
 
         // Verify specific racers in race 25C
@@ -124,7 +124,7 @@ public class GcpvExportParserRealWorldTests
         {
             Assert.Equal("1500 111M", race.TrackParams);
             Assert.Equal("Open Men B", race.RaceGroup); // "male" should be removed
-            Assert.Equal("Heat, 2 +2", race.Stage);
+            Assert.Equal("Heat (2 + 2)", race.Stage);
         }
     }
 

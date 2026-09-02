@@ -64,6 +64,9 @@ public class GcpvExportParser
         var racer = GetValueByKey(columns, "racer");
         var affiliation = GetValueByKey(columns, "affiliation");
 
+        var advancementCandidate = TryGetAdvancementCandidate(columns);
+        stage = AdvancementNormalizer.Normalize(stage, advancementCandidate);
+
         return new GcpvRacerRowData(
             raceNumber,
             trackParams,
@@ -73,6 +76,35 @@ public class GcpvExportParser
             racer,
             affiliation
         );
+    }
+
+    /// <summary>
+    /// Returns the cell immediately after the race number, which may contain
+    /// an optional advancement marker (e.g. "(5 + 0)") before "Lane".
+    /// </summary>
+    private string? TryGetAdvancementCandidate(List<string> columns)
+    {
+        if (!_keyFields.TryGetValue("race_number", out var keyField))
+            return null;
+
+        var keyIndex = -1;
+        for (int i = 0; i < columns.Count; i++)
+        {
+            if (columns[i].Trim().Equals(keyField.Key, StringComparison.OrdinalIgnoreCase))
+            {
+                keyIndex = i;
+                break;
+            }
+        }
+
+        if (keyIndex == -1)
+            return null;
+
+        var candidateIndex = keyIndex + keyField.Offset + 1;
+        if (candidateIndex >= columns.Count)
+            return null;
+
+        return columns[candidateIndex].Trim();
     }
 
     private List<string> ParseCsvRow(string row)

@@ -52,7 +52,7 @@ public class GcpvExportParserIntegrationTests
             Assert.Equal("25A", race1.RaceNumber);
             Assert.Equal("1500 111M", race1.TrackParams);
             Assert.Equal("Open Men B  male", race1.RaceGroup);
-            Assert.Equal("Heat, 2 +2", race1.Stage);
+            Assert.Equal("Heat (2 + 2)", race1.Stage);
             Assert.Single(race1.Racers);
             Assert.Equal("1", race1.Racers[0].Lane);
             Assert.Equal("689 PORTER, REGGIE", race1.Racers[0].Racer);
@@ -262,7 +262,7 @@ public class GcpvExportParserIntegrationTests
             Assert.Equal("25A with # and ;", race.RaceNumber);
             Assert.Equal("1500 111M with # and ; special chars", race.TrackParams);
             Assert.Equal("Open Men B with, commas and quotes\"\"", race.RaceGroup);
-            Assert.Equal("Heat, 2 +2 with # and ;", race.Stage);
+            Assert.Equal("Heat (2 + 2) with # and ;", race.Stage);
             Assert.Single(race.Racers);
             
             var racer = race.Racers[0];
