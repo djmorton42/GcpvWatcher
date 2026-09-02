@@ -35,8 +35,10 @@ public class RaceDataConverter
             throw new InvalidOperationException($"Could not determine number of laps for race {gcpvRace.RaceNumber} with track params: {gcpvRace.TrackParams}");
         }
 
-        // Create event title in format "RaceGroup (Track Params) Stage"
-        var eventTitle = $"{gcpvRace.RaceGroup} ({gcpvRace.TrackParams}) {gcpvRace.Stage}";
+        // Create event title in format "RaceGroup Distance Stage"
+        // Display distance only (e.g. "1000m"); keep raw TrackParams for lap calculation above
+        var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
+        var eventTitle = $"{gcpvRace.RaceGroup} {distanceDisplay} {gcpvRace.Stage}";
 
         // Convert racers to the format expected by Race object
         // Race object expects Dictionary<string, int> where key is racer ID (can be alphanumeric) and value is lane
