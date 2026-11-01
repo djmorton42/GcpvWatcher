@@ -36,9 +36,14 @@ public class RaceDataConverter
         }
 
         // Create event title in format "RaceGroup Distance Stage"
-        // Display distance only (e.g. "1000m"); keep raw TrackParams for lap calculation above
+        // Display distance only (e.g. "1000m"); keep raw TrackParams for lap calculation above.
+        // A letter glued to the distance ("500A 111M") is a series and is appended to the stage.
         var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
-        var eventTitle = $"{gcpvRace.RaceGroup} {distanceDisplay} {gcpvRace.Stage}";
+        var seriesLetter = TrackParamsFormatter.GetSeriesLetter(gcpvRace.TrackParams);
+        var stage = string.IsNullOrEmpty(seriesLetter)
+            ? gcpvRace.Stage
+            : $"{gcpvRace.Stage} {seriesLetter}";
+        var eventTitle = $"{gcpvRace.RaceGroup} {distanceDisplay} {stage}";
 
         // Convert racers to the format expected by Race object
         // Race object expects Dictionary<string, int> where key is racer ID (can be alphanumeric) and value is lane

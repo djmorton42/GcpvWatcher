@@ -3,7 +3,7 @@ namespace GcpvWatcher.App.Services;
 public class LapCalculator
 {
     private static readonly List<int> distances = [
-        5000, 3000, 2000, 1500, 1000, 800, 777, 500, 400, 333, 300, 200, 100, 50
+        5000, 3000, 2000, 1500, 1000, 800, 777, 600, 500, 400, 333, 300, 200, 100, 50
     ];
 
     public static double CalculateLaps(string raceParams) {
