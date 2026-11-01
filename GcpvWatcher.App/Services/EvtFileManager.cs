@@ -195,9 +195,14 @@ public class EvtFileManager : IDisposable
                 start += count;
                 var componentNumber = num.ToString() + letters[i];
                 var racersByLane = new Dictionary<string, int>();
+                var names = new Dictionary<string, KeepRacerName>();
                 for (var j = 0; j < segment.Count; j++)
+                {
                     racersByLane[segment[j].Key] = j + 1;
-                result.Add(race with { RaceNumber = componentNumber, Racers = racersByLane });
+                    if (race.RacerNames.TryGetValue(segment[j].Key, out var name))
+                        names[segment[j].Key] = name;
+                }
+                result.Add(race with { RaceNumber = componentNumber, Racers = racersByLane, RacerNames = names });
             }
         }
         return result;
@@ -529,6 +534,9 @@ public class EvtFileManager : IDisposable
             var newLane = last.Racers.Values.Max() + 1;
             var singleRacer = race.Racers.Single();
             var newRacers = new Dictionary<string, int>(last.Racers) { [singleRacer.Key] = newLane };
+            var newNames = new Dictionary<string, KeepRacerName>(last.RacerNames);
+            if (race.RacerNames.TryGetValue(singleRacer.Key, out var incomingName))
+                newNames[singleRacer.Key] = incomingName;
             // Avoid duplicating the letter when the single-racer race is already included (e.g. 37CD + 37D -> 37CD not 37CDD)
             var newLetters = lastLetters.EndsWith(letter, StringComparison.Ordinal) ? lastLetters : lastLetters + letter;
             var newRaceNumber = num.ToString() + newLetters;
@@ -537,6 +545,7 @@ public class EvtFileManager : IDisposable
             {
                 RaceNumber = newRaceNumber,
                 Racers = newRacers,
+                RacerNames = newNames,
                 IsConsolidated = true
             };
         }
@@ -920,18 +929,18 @@ public class EvtFileManager : IDisposable
         csv.NextRecord();
     }
 
-    private void WriteRacerLines(CsvWriter csv, Race race)
+    private static void WriteRacerLines(CsvWriter csv, Race race)
     {
         foreach (var racer in race.Racers.OrderBy(kvp => kvp.Value)) // Order by lane
         {
-            var record = new RacerLineCsvRecord
+            csv.WriteField(string.Empty);
+            csv.WriteField(racer.Key);
+            csv.WriteField(racer.Value.ToString(CultureInfo.InvariantCulture));
+            if (race.RacerNames.TryGetValue(racer.Key, out var name))
             {
-                Field1 = "",
-                RacerId = racer.Key.ToString(),
-                Lane = racer.Value.ToString()
-            };
-
-            csv.WriteRecord(record);
+                foreach (var column in name.ColumnsToWrite())
+                    csv.WriteField(column);
+            }
             csv.NextRecord();
         }
     }

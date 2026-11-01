@@ -159,18 +159,18 @@ public class FileOperationsService
         csv.NextRecord();
     }
 
-    private void WriteRacerLines(CsvWriter csv, Race race)
+    private static void WriteRacerLines(CsvWriter csv, Race race)
     {
         foreach (var racer in race.Racers.OrderBy(kvp => kvp.Value)) // Order by lane
         {
-            var record = new RacerLineCsvRecord
+            csv.WriteField(string.Empty);
+            csv.WriteField(racer.Key);
+            csv.WriteField(racer.Value.ToString(CultureInfo.InvariantCulture));
+            if (race.RacerNames.TryGetValue(racer.Key, out var name))
             {
-                Field1 = "",
-                RacerId = racer.Key.ToString(),
-                Lane = racer.Value.ToString()
-            };
-
-            csv.WriteRecord(record);
+                foreach (var column in name.ColumnsToWrite())
+                    csv.WriteField(column);
+            }
             csv.NextRecord();
         }
     }

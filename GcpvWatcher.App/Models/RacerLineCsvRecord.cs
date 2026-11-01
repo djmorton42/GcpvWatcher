@@ -12,4 +12,13 @@ public class RacerLineCsvRecord
 
     [Index(2)]
     public string Lane { get; set; } = string.Empty;
+
+    [Index(3)]
+    public string LastName { get; set; } = string.Empty;
+
+    [Index(4)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Index(5)]
+    public string Affiliation { get; set; } = string.Empty;
 }

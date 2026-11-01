@@ -2,6 +2,12 @@ namespace GcpvWatcher.App.Models;
 
 public record Race(string RaceNumber, string RaceTitle, decimal NumberOfLaps, Dictionary<string, int> Racers)
 {
+    /// <summary>
+    /// Last name, first name, and affiliation from an evt row, keyed by racer id.
+    /// Absent when that row did not include any of those fields.
+    /// </summary>
+    public Dictionary<string, KeepRacerName> RacerNames { get; init; } = new();
+
     public bool IsFromKeepFile { get; init; } = false;
 
     /// <summary>

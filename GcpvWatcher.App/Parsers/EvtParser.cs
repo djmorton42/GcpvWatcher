@@ -76,6 +76,7 @@ public class EvtParser
         var raceInfo = ParseRaceInfoLine(raceInfoLine);
         
         var racers = new Dictionary<string, int>();
+        var names = new Dictionary<string, KeepRacerName>();
         
         // Parse racer lines that follow the race info line
         for (int i = raceInfoLineIndex + 1; i < lines.Count; i++)
@@ -90,11 +91,20 @@ public class EvtParser
             var racerLine = ParseRacerLine(line);
             if (racerLine.HasValue)
             {
-                racers[racerLine.Value.RacerId] = racerLine.Value.Lane;
+                var parsed = racerLine.Value;
+                racers[parsed.RacerId] = parsed.Lane;
+                var name = new KeepRacerName(parsed.LastName, parsed.FirstName, parsed.Affiliation);
+                if (name.HasAny)
+                    names[parsed.RacerId] = name;
+                else
+                    names.Remove(parsed.RacerId);
             }
         }
 
-        return new Race(raceInfo.RaceNumber, raceInfo.RaceTitle, raceInfo.NumberOfLaps, racers);
+        return new Race(raceInfo.RaceNumber, raceInfo.RaceTitle, raceInfo.NumberOfLaps, racers)
+        {
+            RacerNames = names
+        };
     }
 
     private (string RaceNumber, string RaceTitle, decimal NumberOfLaps) ParseRaceInfoLine(string line)
@@ -144,7 +154,7 @@ public class EvtParser
         }
     }
 
-    private (string RacerId, int Lane)? ParseRacerLine(string line)
+    private (string RacerId, int Lane, string LastName, string FirstName, string Affiliation)? ParseRacerLine(string line)
     {
         if (string.IsNullOrWhiteSpace(line))
             return null;
@@ -183,7 +193,12 @@ public class EvtParser
                 throw new ArgumentException($"Invalid lane format: {record.Lane}");
             }
 
-            return (racerId, lane);
+            return (
+                racerId,
+                lane,
+                record.LastName?.Trim() ?? "",
+                record.FirstName?.Trim() ?? "",
+                record.Affiliation?.Trim() ?? "");
         }
         catch (Exception ex) when (ex is not ArgumentException)
         {
