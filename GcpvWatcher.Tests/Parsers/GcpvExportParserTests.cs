@@ -1,6 +1,7 @@
 using GcpvWatcher.App.Models;
 using GcpvWatcher.App.Parsers;
 using GcpvWatcher.App.Providers;
+using GcpvWatcher.App.Services;
 using Xunit;
 
 namespace GcpvWatcher.Tests.Parsers;
@@ -794,5 +795,41 @@ public class GcpvExportParserTests
         Assert.Single(raceList);
         var race = raceList[0];
         Assert.Equal("Open Men B  male", race.RaceGroup); // Only "female" should be removed (longest match)
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithSeriesLetterOnDistance_ConvertsToMetresAndAppendsLetterToStage()
+    {
+        // "500A 111M" is a 500m race in series A (later files use B, C), not a distance named 500A.
+        var keyFieldsWithStopWords = new Dictionary<string, KeyFieldConfig>
+        {
+            { "track_params", new KeyFieldConfig("Event :", 1) },
+            { "race_group", new KeyFieldConfig("Event :", 2, new[] { "male", "female", "Genders Mixed" }) },
+            { "stage", new KeyFieldConfig("Stage :", 1) },
+            { "race_number", new KeyFieldConfig("Race", 1) },
+            { "lane", new KeyFieldConfig("Lane", 3) },
+            { "racer", new KeyFieldConfig("Skaters", 3) },
+            { "affiliation", new KeyFieldConfig("Club", 3) }
+        };
+
+        var testData = new[]
+        {
+            "\"Event :\",\"500A 111M\",\"All Skaters,  Genders Mixed\",\"Stage :\",\"Final\",,,\"Race\",\"2A\",\"Lane\",\"Skaters\",\"Club\",1,\"746 WU, ALWYN\",\"Richmond Hill\",\"9/13/2026   10:16:22 AM\""
+        };
+        var provider = new GcpvExportDataStaticProvider(testData);
+        var parser = new GcpvExportParser(provider, keyFieldsWithStopWords);
+
+        var parsed = (await parser.ParseAsync()).Single();
+        Assert.Equal("2A", parsed.RaceNumber);
+        Assert.Equal("500A 111M", parsed.TrackParams);
+        Assert.Equal("All Skaters,", parsed.RaceGroup);
+        Assert.Equal("Final", parsed.Stage);
+        Assert.Equal("746 WU, ALWYN", parsed.Racers[0].Racer);
+        Assert.Equal("Richmond Hill", parsed.Racers[0].Affiliation);
+
+        var race = new RaceDataConverter().ConvertGcpvRacesToRaces([parsed]).Single();
+        Assert.Equal("All Skaters, 500m Final A", race.RaceTitle);
+        Assert.Equal(4.5m, race.NumberOfLaps);
+        Assert.Equal(1, race.Racers["746"]);
     }
 }

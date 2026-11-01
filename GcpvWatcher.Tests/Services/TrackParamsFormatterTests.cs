@@ -13,6 +13,12 @@ public class TrackParamsFormatterTests
     [InlineData("500 100m", "500m")]
     [InlineData("  1000  111M  ", "1000m")]
     [InlineData("3000 111M", "3000m")]
+    [InlineData("600 111M", "600m")]
+    [InlineData("500A 111M", "500m")]
+    [InlineData("500a 111m", "500m")]
+    [InlineData("1000B 100M", "1000m")]
+    [InlineData("600C 111M", "600m")]
+    [InlineData("  500A  111M  ", "500m")]
     public void FormatForRaceTitle_WithDistanceAndTrack_ReturnsDistanceWithLowercaseM(string input, string expected)
     {
         Assert.Equal(expected, TrackParamsFormatter.FormatForRaceTitle(input));
@@ -24,6 +30,12 @@ public class TrackParamsFormatterTests
     [InlineData("5000", "5000")]
     [InlineData("1500 111M with # and ; special chars", "1500 111M with # and ; special chars")]
     [InlineData("1000 200M", "1000 200M")] // unknown track size — leave alone
+    [InlineData("500A", "500A")] // series letter without a track size — leave alone
+    [InlineData("500AB 111M", "500AB 111M")] // only a single series letter is recognized
+    [InlineData("500A 200M", "500A 200M")] // unknown track size — leave alone
+    [InlineData("500 A 111M", "500 A 111M")] // letter must be glued to the distance
+    [InlineData("500m 111M", "500m 111M")] // "m" is meters, not a series letter
+    [InlineData("1000M 111M", "1000M 111M")]
     [InlineData("", "")]
     [InlineData("   ", "   ")]
     public void FormatForRaceTitle_WithUnrecognizedFormat_ReturnsUnchanged(string input, string expected)
@@ -66,5 +78,38 @@ public class RaceDataConverterTests
         Assert.Single(races);
         Assert.Equal("Open Women A 500M Final", races[0].RaceTitle);
         Assert.Equal(5.0m, races[0].NumberOfLaps); // defaults to 100m track
+    }
+
+    [Theory]
+    [InlineData("2A", "500A 111M", "All Skaters,", "Final", "All Skaters, 500m Final A", 4.5)]
+    [InlineData("3B", "1000B 111M", "Open Men", "Final", "Open Men 1000m Final B", 9.0)]
+    [InlineData("4C", "1500C 100M", "Women", "Semi-Final", "Women 1500m Semi-Final C", 15.0)]
+    [InlineData("5A", "600A 111M", "All Skaters,", "Final", "All Skaters, 600m Final A", 5.4)]
+    [InlineData("6A", "777a 111m", "Mixed", "Final", "Mixed 777m Final a", 7.0)]
+    [InlineData("2A", "500B 111M", "All Skaters,", "Final", "All Skaters, 500m Final B", 4.5)]
+    [InlineData("31C", "500 111M", "Women A", "Final", "Women A 500m Final", 4.5)]
+    [InlineData("2A", "500AB 111M", "All Skaters,", "Final", "All Skaters, 500AB 111M Final", 4.5)]
+    [InlineData("2A", "500A 200M", "All Skaters,", "Final", "All Skaters, 500A 200M Final", 5.0)]
+    public void ConvertGcpvRacesToRaces_WithOptionalSeriesLetter_BuildsExpectedTitle(
+        string raceNumber,
+        string trackParams,
+        string raceGroup,
+        string stage,
+        string expectedTitle,
+        double expectedLaps)
+    {
+        var gcpvRace = new GcpvRaceData(
+            raceNumber,
+            trackParams,
+            raceGroup,
+            stage,
+            [new GcpvRacerData("1", "746 WU, ALWYN", "Richmond Hill")]);
+
+        var races = new RaceDataConverter().ConvertGcpvRacesToRaces([gcpvRace]).ToList();
+
+        Assert.Single(races);
+        Assert.Equal(expectedTitle, races[0].RaceTitle);
+        Assert.Equal((decimal)expectedLaps, races[0].NumberOfLaps);
+        Assert.Equal(raceNumber, races[0].RaceNumber);
     }
 }
