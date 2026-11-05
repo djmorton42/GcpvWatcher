@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GcpvWatcher.App.ViewModels"
         xmlns:converters="using:GcpvWatcher.App.Converters"
+        xmlns:models="using:GcpvWatcher.App.Models"
         x:Class="GcpvWatcher.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="GcpvWatcher Directory Monitor"
@@ -177,7 +178,7 @@
                               HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl ItemsSource="{Binding Races}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate>
+                            <DataTemplate x:DataType="models:Race">
                                 <Border BorderBrush="DarkGray" 
                                         BorderThickness="1" 
                                         CornerRadius="3" 
@@ -221,7 +222,7 @@
                                                        FontSize="10" 
                                                        Foreground="DarkBlue" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Racers, Converter={StaticResource RacersToStringConverter}}" 
+                                        <TextBlock Text="{Binding ., Converter={StaticResource RacersToStringConverter}}" 
                                                    FontSize="9" 
                                                    FontFamily="Consolas, Courier New, monospace"
                                                    Foreground="DarkBlue" 

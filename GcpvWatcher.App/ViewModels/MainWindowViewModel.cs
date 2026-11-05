@@ -435,6 +435,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         {
             var racers = _fileWatcherService.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             RacerDataService.UpdateRacers(racers);
+            RefreshRacesDisplay();
         }
         
         // Notify that the Racers property has changed
