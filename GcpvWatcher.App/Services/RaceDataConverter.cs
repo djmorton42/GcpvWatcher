@@ -35,9 +35,9 @@ public class RaceDataConverter
             throw new InvalidOperationException($"Could not determine number of laps for race {gcpvRace.RaceNumber} with track params: {gcpvRace.TrackParams}");
         }
 
-        // Create event title in format "RaceGroup Distance Stage"
-        // Display distance only (e.g. "1000m"); keep raw TrackParams for lap calculation above.
-        // A letter glued to the distance ("500A 111M") is a series and is appended to the stage.
+        // Create event title in format "RaceGroup Distance [qualifiers] Stage [series]"
+        // e.g. "Open Men B 1500m Heat", "All Skaters 500m No Pts Final", "All Skaters 500m Final A".
+        // Lap count above uses the same parse, so "100M" / "111M" select the track.
         var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
         var seriesLetter = TrackParamsFormatter.GetSeriesLetter(gcpvRace.TrackParams);
         var stage = string.IsNullOrEmpty(seriesLetter)

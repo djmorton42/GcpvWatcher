@@ -58,6 +58,9 @@ public class LapCalculatorTests
     [InlineData("200", 2.0)]
     [InlineData("100", 1.0)]
     [InlineData("50", 0.5)]
+    [InlineData("400 No Pts 100M", 4.0)]
+    [InlineData("50 100M", 0.5)]
+    [InlineData("50 No Pts 100M", 0.5)]
     public void CalculateLaps_WithStandardTrackVariousDistances_ReturnsCorrectLaps(string raceParams, double expected)
     {
         // Act
@@ -78,6 +81,8 @@ public class LapCalculatorTests
     [InlineData("600A 111M", 5.4)]
     [InlineData("500 111m", 4.5)]
     [InlineData("500A 111M", 4.5)]
+    [InlineData("500 No Pts 111M", 4.5)]
+    [InlineData("500A No Pts 111M", 4.5)]
     [InlineData("333 111m", 3.0)]
     public void CalculateLaps_With111MTrackVariousDistances_ReturnsCorrectLaps(string raceParams, double expected)
     {

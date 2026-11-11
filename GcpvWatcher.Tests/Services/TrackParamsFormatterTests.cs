@@ -15,6 +15,10 @@ public class TrackParamsFormatterTests
     [InlineData("3000 111M", "3000m")]
     [InlineData("600 111M", "600m")]
     [InlineData("500A 111M", "500m")]
+    [InlineData("500 No Pts 111M", "500m No Pts")]
+    [InlineData("400 No Pts 100M", "400m No Pts")]
+    [InlineData("500A No Pts 111M", "500m No Pts")]
+    [InlineData("  500  No Pts  111m  ", "500m No Pts")]
     [InlineData("500a 111m", "500m")]
     [InlineData("1000B 100M", "1000m")]
     [InlineData("600C 111M", "600m")]
@@ -33,7 +37,7 @@ public class TrackParamsFormatterTests
     [InlineData("500A", "500A")] // series letter without a track size — leave alone
     [InlineData("500AB 111M", "500AB 111M")] // only a single series letter is recognized
     [InlineData("500A 200M", "500A 200M")] // unknown track size — leave alone
-    [InlineData("500 A 111M", "500 A 111M")] // letter must be glued to the distance
+    [InlineData("500 A 111M", "500m A")] // spaced letter is a qualifier, not a series
     [InlineData("500m 111M", "500m 111M")] // "m" is meters, not a series letter
     [InlineData("1000M 111M", "1000M 111M")]
     [InlineData("", "")]
@@ -81,6 +85,10 @@ public class RaceDataConverterTests
     }
 
     [Theory]
+    [InlineData("38A", "500 No Pts 111M", "All Skaters", "Final", "All Skaters 500m No Pts Final", 4.5)]
+    [InlineData("12A", "400 No Pts 100M", "Age 13 Mixed Gender", "Final", "Age 13 Mixed Gender 400m No Pts Final", 4.0)]
+    [InlineData("21A", "500A No Pts 111M", "All Skaters", "Final", "All Skaters 500m No Pts Final A", 4.5)]
+    [InlineData("2A", "50 No Pts 100M", "All Skaters", "Final", "All Skaters 50m No Pts Final", 0.5)]
     [InlineData("2A", "500A 111M", "All Skaters,", "Final", "All Skaters, 500m Final A", 4.5)]
     [InlineData("3B", "1000B 111M", "Open Men", "Final", "Open Men 1000m Final B", 9.0)]
     [InlineData("4C", "1500C 100M", "Women", "Semi-Final", "Women 1500m Semi-Final C", 15.0)]

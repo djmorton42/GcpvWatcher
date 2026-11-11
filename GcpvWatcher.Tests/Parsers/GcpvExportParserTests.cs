@@ -822,13 +822,13 @@ public class GcpvExportParserTests
         var parsed = (await parser.ParseAsync()).Single();
         Assert.Equal("2A", parsed.RaceNumber);
         Assert.Equal("500A 111M", parsed.TrackParams);
-        Assert.Equal("All Skaters,", parsed.RaceGroup);
+        Assert.Equal("All Skaters", parsed.RaceGroup);
         Assert.Equal("Final", parsed.Stage);
         Assert.Equal("746 WU, ALWYN", parsed.Racers[0].Racer);
         Assert.Equal("Richmond Hill", parsed.Racers[0].Affiliation);
 
         var race = new RaceDataConverter().ConvertGcpvRacesToRaces([parsed]).Single();
-        Assert.Equal("All Skaters, 500m Final A", race.RaceTitle);
+        Assert.Equal("All Skaters 500m Final A", race.RaceTitle);
         Assert.Equal(4.5m, race.NumberOfLaps);
         Assert.Equal(1, race.Racers["746"]);
     }

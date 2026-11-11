@@ -204,8 +204,9 @@ public class GcpvExportParser
         {
             if (value.EndsWith(stopWord, StringComparison.Ordinal))
             {
-                // Remove the stop word from the end
-                value = value.Substring(0, value.Length - stopWord.Length).Trim();
+                // Remove the stop word from the end. A trailing comma belongs to the
+                // removed tag ("All Skaters,  Genders Mixed"), not to the group name.
+                value = value.Substring(0, value.Length - stopWord.Length).Trim().TrimEnd(',').Trim();
                 break; // Only remove the first (longest) match
             }
         }
