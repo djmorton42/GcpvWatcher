@@ -37,7 +37,8 @@ public class RaceDataConverter
 
         // Create event title in format "RaceGroup Distance [qualifiers] Stage [series]"
         // e.g. "Open Men B 1500m Heat", "All Skaters 500m No Pts Final", "All Skaters 500m Final A".
-        // Lap count above uses the same parse, so "100M" / "111M" select the track.
+        // Lap count above uses the same parse. The 111 m track is 111.11 m.
+        // A length that is not a whole or half lap is the other track.
         var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
         var seriesLetter = TrackParamsFormatter.GetSeriesLetter(gcpvRace.TrackParams);
         var stage = string.IsNullOrEmpty(seriesLetter)

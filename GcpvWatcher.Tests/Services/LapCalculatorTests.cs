@@ -77,8 +77,6 @@ public class LapCalculatorTests
     [InlineData("1500 111m", 13.5)]
     [InlineData("1000 111m", 9.0)]
     [InlineData("777 111m", 7.0)]
-    [InlineData("600 111m", 5.4)]
-    [InlineData("600A 111M", 5.4)]
     [InlineData("500 111m", 4.5)]
     [InlineData("500A 111M", 4.5)]
     [InlineData("500 No Pts 111M", 4.5)]
@@ -91,6 +89,19 @@ public class LapCalculatorTests
 
         // Assert
         Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("400 111M", 4.0)]
+    [InlineData("400 No Pts 111M", 4.0)]
+    [InlineData("600 111m", 6.0)]
+    [InlineData("600A 111M", 6.0)]
+    [InlineData("800 111M", 8.0)]
+    [InlineData("777", 7.0)]
+    [InlineData("333", 3.0)]
+    public void CalculateLaps_WhenStatedTrackIsNotWholeOrHalf_UsesTheOtherTrack(string raceParams, double expected)
+    {
+        Assert.Equal(expected, LapCalculator.CalculateLaps(raceParams));
     }
 
     [Fact]
