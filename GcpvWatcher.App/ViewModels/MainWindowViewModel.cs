@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Avalonia.Platform.Storage;
@@ -22,7 +23,8 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     private IFileWatcherService? _fileWatcherService;
     private AppConfig? _appConfig;
     private UserPreferences _userPreferences = new();
-    private readonly ObservableCollection<Race> _races = new();
+    private readonly ObservableCollection<RaceRowViewModel> _races = new();
+    private string _bulkLapsText = "";
     private string _logContent = "";
     private string _rawEvtContent = "";
 
@@ -35,6 +37,8 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         StartWatchingCommand = new RelayCommand(StartWatching, () => CanStartWatching);
         StopWatchingCommand = new RelayCommand(StopWatching, () => CanStopWatching);
         CloseCommand = new RelayCommand(Close);
+        SetSelectedLapsCommand = new RelayCommand(SetSelectedLaps, () => HasSelectedRaces);
+        ResetSelectedCommand = new RelayCommand(ResetSelected, () => HasSelectedRaces);
         
         // Subscribe to logger events
         WatcherLogger.LogMessage += OnLogMessage;
@@ -199,7 +203,25 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
-    public ObservableCollection<Race> Races => _races;
+    public ObservableCollection<RaceRowViewModel> Races => _races;
+
+    public string BulkLapsText
+    {
+        get => _bulkLapsText;
+        set
+        {
+            if (_bulkLapsText == value)
+                return;
+            _bulkLapsText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool HasSelectedRaces => _races.Any(row => row.IsSelected);
+
+    public ICommand SetSelectedLapsCommand { get; }
+
+    public ICommand ResetSelectedCommand { get; }
 
     public Dictionary<string, Racer> Racers => _fileWatcherService?.Racers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, Racer>();
 
@@ -477,15 +499,95 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     {
         if (_fileWatcherService == null) return;
         var allRaces = _fileWatcherService.GetAllRaces().ToList();
+        var selected = _races.Where(row => row.IsSelected).Select(row => row.RaceNumber).ToHashSet(StringComparer.Ordinal);
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             _races.Clear();
             foreach (var race in allRaces)
             {
-                _races.Add(race);
+                _races.Add(new RaceRowViewModel(
+                    race,
+                    selected.Contains(race.RaceNumber),
+                    OnRaceSelectionChanged,
+                    SaveRaceRow,
+                    ResetRaceRow));
             }
+            OnRaceSelectionChanged();
             UpdateRawEvtContent();
         });
+    }
+
+    private void OnRaceSelectionChanged()
+    {
+        OnPropertyChanged(nameof(HasSelectedRaces));
+        ((RelayCommand)SetSelectedLapsCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)ResetSelectedCommand).RaiseCanExecuteChanged();
+    }
+
+    private void SaveRaceRow(RaceRowViewModel row)
+    {
+        if (_fileWatcherService == null)
+            return;
+
+        if (!row.TryReadLaps(out var laps))
+        {
+            row.LapsText = row.Race.NumberOfLaps.ToString(CultureInfo.InvariantCulture);
+            return;
+        }
+
+        var changed = false;
+        if (row.TitleChanged)
+        {
+            _fileWatcherService.SetRaceTitle(row.RaceNumber, row.TitleText);
+            changed = true;
+        }
+
+        if (row.LapsChanged)
+        {
+            _fileWatcherService.SetRaceLaps([row.RaceNumber], laps);
+            changed = true;
+        }
+
+        if (changed)
+            RefreshRacesDisplay();
+    }
+
+    private void ResetRaceRow(RaceRowViewModel row)
+    {
+        if (_fileWatcherService == null || !row.IsOverridden)
+            return;
+
+        _fileWatcherService.ClearRaceOverrides([row.RaceNumber]);
+        RefreshRacesDisplay();
+    }
+
+    private void SetSelectedLaps()
+    {
+        if (_fileWatcherService == null)
+            return;
+
+        if (!decimal.TryParse(BulkLapsText.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var laps) || laps < 0)
+            return;
+
+        var selected = _races.Where(row => row.IsSelected).Select(row => row.RaceNumber).ToList();
+        if (selected.Count == 0)
+            return;
+
+        _fileWatcherService.SetRaceLaps(selected, laps);
+        RefreshRacesDisplay();
+    }
+
+    private void ResetSelected()
+    {
+        if (_fileWatcherService == null)
+            return;
+
+        var selected = _races.Where(row => row.IsSelected).Select(row => row.RaceNumber).ToList();
+        if (selected.Count == 0)
+            return;
+
+        _fileWatcherService.ClearRaceOverrides(selected);
+        RefreshRacesDisplay();
     }
 
     private void OnRacersUpdated(object? sender, EventArgs e)

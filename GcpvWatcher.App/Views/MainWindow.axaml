@@ -205,79 +205,111 @@
                     x:Name="MainTabControl"
                     SelectionChanged="OnTabSelectionChanged">
             <TabItem Header="Races" x:Name="RacesTab">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                              HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding Races}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:Race">
-                                <Border BorderBrush="DarkGray" 
-                                        BorderThickness="1" 
-                                        CornerRadius="3" 
-                                        Margin="0,2" 
-                                        Padding="8">
-                                    <Border.Background>
-                                        <MultiBinding Converter="{StaticResource RaceBackgroundMultiConverter}">
-                                            <Binding Path="IsFromKeepFile" />
-                                            <Binding Path="RaceNumber" />
-                                        </MultiBinding>
-                                    </Border.Background>
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="Race " 
-                                                       FontWeight="Bold" 
-                                                       FontSize="12" />
-                                            <TextBlock Text="{Binding RaceNumber}" 
-                                                       FontWeight="Bold" 
-                                                       FontSize="12" />
-                                            <TextBlock Text=" (Keep File)" 
-                                                       FontWeight="Normal" 
-                                                       FontSize="10" 
-                                                       Foreground="DarkOrange"
-                                                       Margin="5,0,0,0"
-                                                       IsVisible="{Binding IsFromKeepFile}" />
-                                            <TextBlock Text=" (Consolidated)" 
-                                                       FontWeight="Normal" 
-                                                       FontSize="10" 
-                                                       Foreground="DarkGreen"
-                                                       Margin="5,0,0,0"
-                                                       IsVisible="{Binding RaceNumber, Converter={StaticResource RaceNumberToIsConsolidatedConverter}}" />
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="0,0,0,8">
+                        <TextBox Text="{Binding BulkLapsText}"
+                                 Watermark="Laps"
+                                 Width="70" />
+                        <Button Content="Set laps for selected"
+                                Command="{Binding SetSelectedLapsCommand}" />
+                        <Button Content="Reset selected"
+                                Command="{Binding ResetSelectedCommand}" />
+                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Races}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RaceRowViewModel">
+                                    <Border BorderBrush="DarkGray"
+                                            BorderThickness="1"
+                                            CornerRadius="3"
+                                            Margin="0,2"
+                                            Padding="8">
+                                        <Border.Background>
+                                            <MultiBinding Converter="{StaticResource RaceBackgroundMultiConverter}">
+                                                <Binding Path="IsFromKeepFile" />
+                                                <Binding Path="RaceNumber" />
+                                            </MultiBinding>
+                                        </Border.Background>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal">
+                                                <CheckBox IsChecked="{Binding IsSelected}"
+                                                          Margin="0,0,8,0" />
+                                                <TextBlock Text="Race "
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding RaceNumber}"
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text=" (Keep File)"
+                                                           FontSize="10"
+                                                           Foreground="DarkOrange"
+                                                           Margin="5,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding IsFromKeepFile}" />
+                                                <TextBlock Text=" (Consolidated)"
+                                                           FontSize="10"
+                                                           Foreground="DarkGreen"
+                                                           Margin="5,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding RaceNumber, Converter={StaticResource RaceNumberToIsConsolidatedConverter}}" />
+                                                <TextBlock Text=" Edited"
+                                                           FontSize="10"
+                                                           Foreground="DarkBlue"
+                                                           Margin="5,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding IsOverridden}" />
+                                            </StackPanel>
+                                            <TextBox Text="{Binding TitleText}"
+                                                     FontSize="11"
+                                                     Margin="0,4,0,0" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Spacing="6">
+                                                <TextBox Text="{Binding LapsText}"
+                                                         Width="60"
+                                                         FontSize="11" />
+                                                <TextBlock Text="laps"
+                                                           FontSize="10"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="DarkBlue" />
+                                                <Button Content="Save"
+                                                        Command="{Binding SaveCommand}"
+                                                        Padding="8,2" />
+                                                <Button Content="Reset"
+                                                        Command="{Binding ResetCommand}"
+                                                        Padding="8,2"
+                                                        IsVisible="{Binding IsOverridden}" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding TrackWarning}"
+                                                       IsVisible="{Binding HasTrackWarning}"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#B91C1C"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding TrackCaution}"
+                                                       IsVisible="{Binding HasTrackCaution}"
+                                                       FontSize="10"
+                                                       Foreground="#A16207"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding Race, Converter={StaticResource RacersToStringConverter}}"
+                                                       FontSize="9"
+                                                       FontFamily="Consolas, Courier New, monospace"
+                                                       Foreground="DarkBlue"
+                                                       Margin="0,1,0,0"
+                                                       TextWrapping="Wrap" />
                                         </StackPanel>
-                                        <TextBlock Text="{Binding RaceTitle}" 
-                                                   FontSize="11" 
-                                                   Margin="0,2,0,0" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                            <TextBlock Text="{Binding NumberOfLaps}" 
-                                                       FontSize="10" 
-                                                       Foreground="DarkBlue" />
-                                            <TextBlock Text=" laps" 
-                                                       FontSize="10" 
-                                                       Foreground="DarkBlue" />
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding TrackWarning}"
-                                                   IsVisible="{Binding HasTrackWarning}"
-                                                   FontSize="10"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#B91C1C"
-                                                   TextWrapping="Wrap"
-                                                   Margin="0,2,0,0" />
-                                        <TextBlock Text="{Binding TrackCaution}"
-                                                   IsVisible="{Binding HasTrackCaution}"
-                                                   FontSize="10"
-                                                   Foreground="#A16207"
-                                                   TextWrapping="Wrap"
-                                                   Margin="0,2,0,0" />
-                                        <TextBlock Text="{Binding ., Converter={StaticResource RacersToStringConverter}}" 
-                                                   FontSize="9" 
-                                                   FontFamily="Consolas, Courier New, monospace"
-                                                   Foreground="DarkBlue" 
-                                                   Margin="0,1,0,0" 
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
             </TabItem>
             
             <TabItem Header="Log">

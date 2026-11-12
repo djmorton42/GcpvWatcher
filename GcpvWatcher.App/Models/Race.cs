@@ -32,6 +32,11 @@ public record Race(string RaceNumber, string RaceTitle, decimal NumberOfLaps, Di
 
     public bool HasTrackCaution => !string.IsNullOrEmpty(TrackCaution);
 
+    /// <summary>
+    /// True when a saved operator edit replaced the calculated name, laps, or both.
+    /// </summary>
+    public bool IsOverridden { get; init; }
+
     public override string ToString()
     {
         var racersString = string.Join(", ", Racers.OrderBy(kvp => kvp.Value).Select(kvp => $"Racer {kvp.Key} in Lane {kvp.Value}"));

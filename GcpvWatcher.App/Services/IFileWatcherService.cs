@@ -65,6 +65,21 @@ public interface IFileWatcherService : IDisposable
     Task ReprocessWatchedFilesAsync();
 
     /// <summary>
+    /// Saves a name edit for a race. An empty title clears the name edit.
+    /// </summary>
+    void SetRaceTitle(string raceNumber, string? title);
+
+    /// <summary>
+    /// Saves the same lap count for each race and rewrites Lynx.evt.
+    /// </summary>
+    void SetRaceLaps(IEnumerable<string> raceNumbers, decimal laps);
+
+    /// <summary>
+    /// Removes saved name and lap edits for each race and rewrites Lynx.evt.
+    /// </summary>
+    void ClearRaceOverrides(IEnumerable<string> raceNumbers);
+
+    /// <summary>
     /// Disposes the service asynchronously
     /// </summary>
     Task DisposeAsync();

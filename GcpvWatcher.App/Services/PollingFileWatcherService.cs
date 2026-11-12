@@ -651,6 +651,24 @@ public class PollingFileWatcherService : IFileWatcherService
         _evtFileManager.RefreshEvtFile();
     }
 
+    public void SetRaceTitle(string raceNumber, string? title)
+    {
+        _evtFileManager.SetRaceTitle(raceNumber, title);
+        RefreshEvtFile();
+    }
+
+    public void SetRaceLaps(IEnumerable<string> raceNumbers, decimal laps)
+    {
+        _evtFileManager.SetRaceLaps(raceNumbers, laps);
+        RefreshEvtFile();
+    }
+
+    public void ClearRaceOverrides(IEnumerable<string> raceNumbers)
+    {
+        _evtFileManager.ClearRaceOverrides(raceNumbers);
+        RefreshEvtFile();
+    }
+
     public async Task ReprocessWatchedFilesAsync()
     {
         lock (_lockObject)

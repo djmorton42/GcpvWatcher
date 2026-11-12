@@ -24,6 +24,7 @@ public class EvtFileManager : IDisposable
     private bool _hasLoadedExistingRaces = false; // Track if we've already loaded existing races
     private bool _hasLoadedKeepRaces = false; // Track if we've loaded keep races
     private readonly AppConfig _config;
+    private readonly RaceOverrideStore _overrides;
 
     public event EventHandler? RacesUpdated;
 
@@ -34,6 +35,7 @@ public class EvtFileManager : IDisposable
         _lynxEvtFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt");
         _lynxEvtKeepFilePath = Path.Combine(_finishLynxDirectory, "Lynx.evt.keep");
         _fileRaces = new Dictionary<string, List<Race>>();
+        _overrides = new RaceOverrideStore(finishLynxDirectory);
         _lastFinishLynxDirectory = finishLynxDirectory;
         
         // Don't load existing races on startup to avoid duplicates
@@ -105,7 +107,9 @@ public class EvtFileManager : IDisposable
     {
         lock (_lockObject)
         {
-            var allRaces = GetAllRaces().ToList();
+            var sourceRaces = GetAllRaces().ToList();
+            _overrides.Prune(sourceRaces.Select(race => race.RaceNumber));
+            var allRaces = sourceRaces.Select(race => _overrides.Apply(race)).ToList();
             if (_config.ConsolidateSingleRacerRaces)
             {
                 // Drop component races when their consolidated form exists so we don't output 37C, 37CD and 37D.
@@ -206,6 +210,21 @@ public class EvtFileManager : IDisposable
             }
         }
         return result;
+    }
+
+    public void SetRaceTitle(string raceNumber, string? title)
+    {
+        _overrides.SetTitle(raceNumber, title);
+    }
+
+    public void SetRaceLaps(IEnumerable<string> raceNumbers, decimal laps)
+    {
+        _overrides.SetLaps(raceNumbers, laps);
+    }
+
+    public void ClearRaceOverrides(IEnumerable<string> raceNumbers)
+    {
+        _overrides.Clear(raceNumbers);
     }
 
     /// <summary>
@@ -547,6 +566,7 @@ public class EvtFileManager : IDisposable
                 Racers = newRacers,
                 RacerNames = newNames,
                 IsConsolidated = true,
+                IsOverridden = last.IsOverridden || race.IsOverridden,
                 TrackWarning = CombineTrackWarnings(last.TrackWarning, race.TrackWarning),
                 TrackCaution = CombineTrackWarnings(last.TrackCaution, race.TrackCaution)
             };
