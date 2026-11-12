@@ -47,17 +47,27 @@ public class RaceDataConverter
             throw new InvalidOperationException($"Could not determine number of laps for race {gcpvRace.RaceNumber} with track params: {gcpvRace.TrackParams}");
         }
 
-        // Create event title in format "RaceGroup Distance [qualifiers] Stage [series]"
-        // e.g. "Open Men B 1500m Heat", "All Skaters 500m No Pts Final", "All Skaters 500m Final A".
         // Lap count above uses the same parse. The 111 m track is 111.11 m.
         // Auto substitutes the other track when a length is not a whole or half lap.
         // A forced length is used as-is. A bad lap count is a warning; a file that names the other track is a caution.
-        var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
-        var seriesLetter = TrackParamsFormatter.GetSeriesLetter(gcpvRace.TrackParams);
-        var stage = string.IsNullOrEmpty(seriesLetter)
-            ? gcpvRace.Stage
-            : $"{gcpvRace.Stage} {seriesLetter}";
-        var eventTitle = $"{gcpvRace.RaceGroup} {distanceDisplay} {stage}";
+        // With parsing rules on, the title is "RaceGroup Distance [qualifiers] Stage [series]"
+        // e.g. "Open Men B 1500m Heat", "All Skaters 500m No Pts Final".
+        // With them off, the group, track text, and stage are joined as they arrived.
+        var applyParsingRules = _config?.ApplyParsingRules ?? true;
+        string eventTitle;
+        if (applyParsingRules)
+        {
+            var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
+            var seriesLetter = TrackParamsFormatter.GetSeriesLetter(gcpvRace.TrackParams);
+            var stage = string.IsNullOrEmpty(seriesLetter)
+                ? gcpvRace.Stage
+                : $"{gcpvRace.Stage} {seriesLetter}";
+            eventTitle = $"{gcpvRace.RaceGroup} {distanceDisplay} {stage}";
+        }
+        else
+        {
+            eventTitle = $"{gcpvRace.RaceGroup} {gcpvRace.TrackParams} {gcpvRace.Stage}";
+        }
 
         // Convert racers to the format expected by Race object
         // Race object expects Dictionary<string, int> where key is racer ID (can be alphanumeric) and value is lane

@@ -33,6 +33,14 @@ public class AppConfig
     public bool ConsolidateSingleRacerRaces { get; set; }
 
     /// <summary>
+    /// When true, event names are cleaned up: distance display, series letters, and advancement markers.
+    /// When false, the file text is kept after configured stop words are removed. Lap calculation still runs.
+    /// Set at runtime from user preferences; not loaded from appconfig.json.
+    /// </summary>
+    [JsonIgnore]
+    public bool ApplyParsingRules { get; set; } = true;
+
+    /// <summary>
     /// When not <see cref="ForcedTrackLength.Auto"/>, every race uses this track length.
     /// Set at runtime from user preferences; not loaded from appconfig.json.
     /// </summary>

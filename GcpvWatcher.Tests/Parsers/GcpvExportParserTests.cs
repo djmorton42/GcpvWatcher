@@ -832,4 +832,36 @@ public class GcpvExportParserTests
         Assert.Equal(4.5m, race.NumberOfLaps);
         Assert.Equal(1, race.Racers["746"]);
     }
+
+    [Fact]
+    public async Task ParseAsync_WithoutParsingRules_KeepsStopWordsRemovedAndLeavesTheRest()
+    {
+        var keyFieldsWithStopWords = new Dictionary<string, KeyFieldConfig>
+        {
+            { "track_params", new KeyFieldConfig("Event :", 1) },
+            { "race_group", new KeyFieldConfig("Event :", 2, new[] { "male", "female", "Genders Mixed" }) },
+            { "stage", new KeyFieldConfig("Stage :", 1) },
+            { "race_number", new KeyFieldConfig("Race", 1) },
+            { "lane", new KeyFieldConfig("Lane", 3) },
+            { "racer", new KeyFieldConfig("Skaters", 3) },
+            { "affiliation", new KeyFieldConfig("Club", 3) }
+        };
+
+        var testData = new[]
+        {
+            "\"Event :\",\"500 No Pts 111M\",\"All Skaters,  Genders Mixed\",\"Stage :\",\"Heat, 2 +4\",,,\"Race\",\"38A\",\"(5 + 0)\",\"Lane\",\"Skaters\",\"Club\",1,\"746 WU, ALWYN\",\"Richmond Hill\",\"11/8/2026   1:51:34 PM\""
+        };
+        var provider = new GcpvExportDataStaticProvider(testData);
+        var parser = new GcpvExportParser(provider, keyFieldsWithStopWords, applyParsingRules: false);
+
+        var parsed = (await parser.ParseAsync()).Single();
+        Assert.Equal("All Skaters,", parsed.RaceGroup);
+        Assert.Equal("500 No Pts 111M", parsed.TrackParams);
+        Assert.Equal("Heat, 2 +4", parsed.Stage);
+
+        var config = new AppConfig { ApplyParsingRules = false };
+        var race = new RaceDataConverter(config).ConvertGcpvRacesToRaces([parsed]).Single();
+        Assert.Equal("All Skaters, 500 No Pts 111M Heat, 2 +4", race.RaceTitle);
+        Assert.Equal(4.5m, race.NumberOfLaps);
+    }
 }

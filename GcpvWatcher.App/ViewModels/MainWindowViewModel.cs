@@ -143,11 +143,11 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             OnPropertyChanged();
             SaveUserPreferences();
             if (_isWatching && _fileWatcherService != null)
-                _ = ReprocessForTrackLengthAsync();
+                _ = ReprocessWatchedFilesAsync();
         }
     }
 
-    private async Task ReprocessForTrackLengthAsync()
+    private async Task ReprocessWatchedFilesAsync()
     {
         try
         {
@@ -156,7 +156,25 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         }
         catch (Exception ex)
         {
-            ApplicationLogger.LogException("Error reprocessing files for track length", ex);
+            ApplicationLogger.LogException("Error reprocessing watched files", ex);
+        }
+    }
+
+    public bool ApplyParsingRules
+    {
+        get => _userPreferences.ApplyParsingRules;
+        set
+        {
+            if (_userPreferences.ApplyParsingRules == value)
+                return;
+
+            _userPreferences.ApplyParsingRules = value;
+            if (_appConfig != null)
+                _appConfig.ApplyParsingRules = value;
+            OnPropertyChanged();
+            SaveUserPreferences();
+            if (_isWatching && _fileWatcherService != null)
+                _ = ReprocessWatchedFilesAsync();
         }
     }
 
@@ -286,6 +304,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 
             _appConfig.ConsolidateSingleRacerRaces = _userPreferences.ConsolidateSingleRacerRaces;
             _appConfig.ForcedTrackLength = _userPreferences.ForcedTrackLength;
+            _appConfig.ApplyParsingRules = _userPreferences.ApplyParsingRules;
             _fileWatcherService = CreateFileWatcherService(_appConfig);
             _fileWatcherService.FileProcessed += OnFileProcessed;
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
@@ -390,6 +409,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             }
 
             OnPropertyChanged(nameof(ConsolidateSingleRacerRaces));
+            OnPropertyChanged(nameof(ApplyParsingRules));
             OnPropertyChanged(nameof(SelectedTrackLength));
 
             ApplicationLogger.Log("User preferences loaded successfully");

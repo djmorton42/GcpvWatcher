@@ -10,6 +10,8 @@ public class UserPreferences
     public string FinishLynxDirectory { get; set; } = string.Empty;
     public bool ConsolidateSingleRacerRaces { get; set; }
 
+    public bool ApplyParsingRules { get; set; } = true;
+
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ForcedTrackLength ForcedTrackLength { get; set; } = ForcedTrackLength.Auto;
 

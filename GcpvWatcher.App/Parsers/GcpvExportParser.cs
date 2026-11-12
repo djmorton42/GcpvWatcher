@@ -10,11 +10,16 @@ public class GcpvExportParser
 {
     private readonly IGcpvExportDataProvider _dataProvider;
     private readonly Dictionary<string, KeyFieldConfig> _keyFields;
+    private readonly bool _applyParsingRules;
 
-    public GcpvExportParser(IGcpvExportDataProvider dataProvider, Dictionary<string, KeyFieldConfig> keyFields)
+    public GcpvExportParser(
+        IGcpvExportDataProvider dataProvider,
+        Dictionary<string, KeyFieldConfig> keyFields,
+        bool applyParsingRules = true)
     {
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
         _keyFields = keyFields ?? throw new ArgumentNullException(nameof(keyFields));
+        _applyParsingRules = applyParsingRules;
     }
 
     public async Task<IEnumerable<GcpvRaceData>> ParseAsync()
@@ -64,8 +69,11 @@ public class GcpvExportParser
         var racer = GetValueByKey(columns, "racer");
         var affiliation = GetValueByKey(columns, "affiliation");
 
-        var advancementCandidate = TryGetAdvancementCandidate(columns);
-        stage = AdvancementNormalizer.Normalize(stage, advancementCandidate);
+        if (_applyParsingRules)
+        {
+            var advancementCandidate = TryGetAdvancementCandidate(columns);
+            stage = AdvancementNormalizer.Normalize(stage, advancementCandidate);
+        }
 
         return new GcpvRacerRowData(
             raceNumber,
@@ -206,7 +214,9 @@ public class GcpvExportParser
             {
                 // Remove the stop word from the end. A trailing comma belongs to the
                 // removed tag ("All Skaters,  Genders Mixed"), not to the group name.
-                value = value.Substring(0, value.Length - stopWord.Length).Trim().TrimEnd(',').Trim();
+                value = value.Substring(0, value.Length - stopWord.Length).Trim();
+                if (_applyParsingRules)
+                    value = value.TrimEnd(',').Trim();
                 break; // Only remove the first (longest) match
             }
         }

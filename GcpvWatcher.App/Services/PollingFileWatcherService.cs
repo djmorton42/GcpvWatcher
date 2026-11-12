@@ -714,7 +714,7 @@ public class PollingFileWatcherService : IFileWatcherService
         {
             // Create data provider for the file
             var dataProvider = new GcpvExportDataFileProvider(filePath);
-            var parser = new GcpvExportParser(dataProvider, _config.KeyFields);
+            var parser = new GcpvExportParser(dataProvider, _config.KeyFields, _config.ApplyParsingRules);
 
             // Parse the GCPV export data
             var gcpvRaces = await parser.ParseAsync();

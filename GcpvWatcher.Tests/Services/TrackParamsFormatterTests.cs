@@ -178,4 +178,21 @@ public class RaceDataConverterTests
         Assert.Equal("File says 100 m. Using 9 laps on the 111 m track.", race.TrackCaution);
         Assert.True(race.HasTrackCaution);
     }
+
+    [Fact]
+    public void ConvertGcpvRacesToRaces_WithoutParsingRules_JoinsTheFileTextAndStillCountsLaps()
+    {
+        var config = new AppConfig { ApplyParsingRules = false };
+        var gcpvRace = new GcpvRaceData(
+            "2A",
+            "500A 111M",
+            "All Skaters,",
+            "Final",
+            [new GcpvRacerData("1", "746 WU, ALWYN", "Richmond Hill")]);
+
+        var race = new RaceDataConverter(config).ConvertGcpvRacesToRaces([gcpvRace]).Single();
+
+        Assert.Equal("All Skaters, 500A 111M Final", race.RaceTitle);
+        Assert.Equal(4.5m, race.NumberOfLaps);
+    }
 }

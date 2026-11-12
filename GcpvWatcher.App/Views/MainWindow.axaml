@@ -141,11 +141,15 @@
                        Foreground="{Binding StatusColor}" />
         </Grid>
 
-        <!-- Consolidate Single-Racer Races -->
-        <CheckBox Grid.Row="6"
-                  Content="Consolidate Single-Racer Races"
-                  IsChecked="{Binding ConsolidateSingleRacerRaces}"
-                  Margin="0,0,0,15" />
+        <StackPanel Grid.Row="6"
+                    Orientation="Horizontal"
+                    Spacing="20"
+                    Margin="0,0,0,15">
+            <CheckBox Content="Consolidate Single-Racer Races"
+                      IsChecked="{Binding ConsolidateSingleRacerRaces}" />
+            <CheckBox Content="Clean event names"
+                      IsChecked="{Binding ApplyParsingRules}" />
+        </StackPanel>
 
         <Grid Grid.Row="7" Margin="0,0,0,15">
             <Grid.ColumnDefinitions>
