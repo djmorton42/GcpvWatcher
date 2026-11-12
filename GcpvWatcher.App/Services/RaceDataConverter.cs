@@ -4,6 +4,13 @@ namespace GcpvWatcher.App.Services;
 
 public class RaceDataConverter
 {
+    private readonly AppConfig? _config;
+
+    public RaceDataConverter(AppConfig? config = null)
+    {
+        _config = config;
+    }
+
     public IEnumerable<Race> ConvertGcpvRacesToRaces(IEnumerable<GcpvRaceData> gcpvRaces)
     {
         var races = new List<Race>();
@@ -27,9 +34,14 @@ public class RaceDataConverter
 
     private Race ConvertGcpvRaceToRace(GcpvRaceData gcpvRace)
     {
-        // Calculate number of laps using LapCalculator
-        var numberOfLaps = LapCalculator.CalculateLaps(gcpvRace.TrackParams);
-        
+        var forcedTrack = _config?.ForcedTrackLength ?? ForcedTrackLength.Auto;
+        var calculation = LapCalculator.ResolveLaps(gcpvRace.TrackParams, forcedTrack);
+        if (!string.IsNullOrEmpty(calculation.Warning))
+            WatcherLogger.Log($"Race {gcpvRace.RaceNumber}: {calculation.Warning}");
+        else if (!string.IsNullOrEmpty(calculation.Caution))
+            WatcherLogger.Log($"Race {gcpvRace.RaceNumber}: {calculation.Caution}");
+
+        var numberOfLaps = calculation.Laps;
         if (numberOfLaps <= 0)
         {
             throw new InvalidOperationException($"Could not determine number of laps for race {gcpvRace.RaceNumber} with track params: {gcpvRace.TrackParams}");
@@ -38,7 +50,8 @@ public class RaceDataConverter
         // Create event title in format "RaceGroup Distance [qualifiers] Stage [series]"
         // e.g. "Open Men B 1500m Heat", "All Skaters 500m No Pts Final", "All Skaters 500m Final A".
         // Lap count above uses the same parse. The 111 m track is 111.11 m.
-        // A length that is not a whole or half lap is the other track.
+        // Auto substitutes the other track when a length is not a whole or half lap.
+        // A forced length is used as-is. A bad lap count is a warning; a file that names the other track is a caution.
         var distanceDisplay = TrackParamsFormatter.FormatForRaceTitle(gcpvRace.TrackParams);
         var seriesLetter = TrackParamsFormatter.GetSeriesLetter(gcpvRace.TrackParams);
         var stage = string.IsNullOrEmpty(seriesLetter)
@@ -71,7 +84,11 @@ public class RaceDataConverter
             racers[racerId] = laneNumber;
         }
 
-        return new Race(gcpvRace.RaceNumber, eventTitle, (decimal)numberOfLaps, racers);
+        return new Race(gcpvRace.RaceNumber, eventTitle, (decimal)numberOfLaps, racers)
+        {
+            TrackWarning = calculation.Warning,
+            TrackCaution = calculation.Caution
+        };
     }
 
     private static bool TryParseRacerId(string racerField, out string racerId)

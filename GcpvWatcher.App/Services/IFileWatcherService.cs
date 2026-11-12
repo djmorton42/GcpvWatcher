@@ -60,6 +60,11 @@ public interface IFileWatcherService : IDisposable
     void RefreshEvtFile();
 
     /// <summary>
+    /// Parses the watched export files again so a track-length change updates lap counts.
+    /// </summary>
+    Task ReprocessWatchedFilesAsync();
+
+    /// <summary>
     /// Disposes the service asynchronously
     /// </summary>
     Task DisposeAsync();

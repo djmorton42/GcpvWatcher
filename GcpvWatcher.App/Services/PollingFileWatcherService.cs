@@ -53,7 +53,7 @@ public class PollingFileWatcherService : IFileWatcherService
         _finishLynxDirectory = finishLynxDirectory ?? throw new ArgumentNullException(nameof(finishLynxDirectory));
         _evtFileManager = new EvtFileManager(_finishLynxDirectory, _config);
         _evtFileManager.RacesUpdated += OnRacesUpdated;
-        _raceDataConverter = new RaceDataConverter();
+        _raceDataConverter = new RaceDataConverter(_config);
         _fileHashes = new Dictionary<string, string>();
         
         // Initialize sound notification service if path is configured
@@ -649,6 +649,41 @@ public class PollingFileWatcherService : IFileWatcherService
     public void RefreshEvtFile()
     {
         _evtFileManager.RefreshEvtFile();
+    }
+
+    public async Task ReprocessWatchedFilesAsync()
+    {
+        lock (_lockObject)
+        {
+            if (!_isWatching || _disposed)
+                return;
+        }
+
+        await _pollingSemaphore.WaitAsync();
+        try
+        {
+            var files = Directory.GetFiles(_watchDirectory, _config.GcpvExportFilePattern);
+            WatcherLogger.Log($"Reprocessing {files.Length} files for track length");
+            foreach (var filePath in files)
+            {
+                try
+                {
+                    await ProcessFileAsync(filePath);
+                }
+                catch (Exception ex)
+                {
+                    ErrorOccurred?.Invoke(this, $"Error reprocessing {Path.GetFileName(filePath)}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorOccurred?.Invoke(this, $"Error reprocessing files: {ex.Message}");
+        }
+        finally
+        {
+            _pollingSemaphore.Release();
+        }
     }
 
     private void CleanupOrphanedRaces()

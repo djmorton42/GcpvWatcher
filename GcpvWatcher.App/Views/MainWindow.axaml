@@ -56,6 +56,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -146,8 +147,34 @@
                   IsChecked="{Binding ConsolidateSingleRacerRaces}"
                   Margin="0,0,0,15" />
 
+        <Grid Grid.Row="7" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="Track length:"
+                       FontSize="14"
+                       VerticalAlignment="Center"
+                       Margin="0,0,10,0" />
+
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding TrackLengthChoices}"
+                      SelectedItem="{Binding SelectedTrackLength}"
+                      HorizontalAlignment="Left"
+                      MinWidth="140"
+                      VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TrackLengthChoice">
+                        <TextBlock Text="{Binding Label}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </Grid>
+
         <!-- Control Buttons -->
-        <StackPanel Grid.Row="7" 
+        <StackPanel Grid.Row="8" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
                     Spacing="15"
@@ -169,7 +196,7 @@
         </StackPanel>
 
         <!-- Tabbed Content -->
-        <TabControl Grid.Row="8" 
+        <TabControl Grid.Row="9" 
                     Margin="0,0,0,0"
                     x:Name="MainTabControl"
                     SelectionChanged="OnTabSelectionChanged">
@@ -222,6 +249,19 @@
                                                        FontSize="10" 
                                                        Foreground="DarkBlue" />
                                         </StackPanel>
+                                        <TextBlock Text="{Binding TrackWarning}"
+                                                   IsVisible="{Binding HasTrackWarning}"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#B91C1C"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,2,0,0" />
+                                        <TextBlock Text="{Binding TrackCaution}"
+                                                   IsVisible="{Binding HasTrackCaution}"
+                                                   FontSize="10"
+                                                   Foreground="#A16207"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,2,0,0" />
                                         <TextBlock Text="{Binding ., Converter={StaticResource RacersToStringConverter}}" 
                                                    FontSize="9" 
                                                    FontFamily="Consolas, Courier New, monospace"

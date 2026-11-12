@@ -122,6 +122,44 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 
     public bool CanBrowseFinishLynxDirectory => !_isWatching;
 
+    public IReadOnlyList<TrackLengthChoice> TrackLengthChoices { get; } =
+    [
+        new(ForcedTrackLength.Auto, "Auto"),
+        new(ForcedTrackLength.Meters100, "100m"),
+        new(ForcedTrackLength.Meters111, "111m")
+    ];
+
+    public TrackLengthChoice SelectedTrackLength
+    {
+        get => TrackLengthChoices.First(choice => choice.Value == _userPreferences.ForcedTrackLength);
+        set
+        {
+            if (value is null || value.Value == _userPreferences.ForcedTrackLength)
+                return;
+
+            _userPreferences.ForcedTrackLength = value.Value;
+            if (_appConfig != null)
+                _appConfig.ForcedTrackLength = value.Value;
+            OnPropertyChanged();
+            SaveUserPreferences();
+            if (_isWatching && _fileWatcherService != null)
+                _ = ReprocessForTrackLengthAsync();
+        }
+    }
+
+    private async Task ReprocessForTrackLengthAsync()
+    {
+        try
+        {
+            if (_fileWatcherService != null)
+                await _fileWatcherService.ReprocessWatchedFilesAsync();
+        }
+        catch (Exception ex)
+        {
+            ApplicationLogger.LogException("Error reprocessing files for track length", ex);
+        }
+    }
+
     public bool ConsolidateSingleRacerRaces
     {
         get => _userPreferences.ConsolidateSingleRacerRaces;
@@ -247,6 +285,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             }
 
             _appConfig.ConsolidateSingleRacerRaces = _userPreferences.ConsolidateSingleRacerRaces;
+            _appConfig.ForcedTrackLength = _userPreferences.ForcedTrackLength;
             _fileWatcherService = CreateFileWatcherService(_appConfig);
             _fileWatcherService.FileProcessed += OnFileProcessed;
             _fileWatcherService.ErrorOccurred += OnErrorOccurred;
@@ -351,6 +390,7 @@ public class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             }
 
             OnPropertyChanged(nameof(ConsolidateSingleRacerRaces));
+            OnPropertyChanged(nameof(SelectedTrackLength));
 
             ApplicationLogger.Log("User preferences loaded successfully");
         }

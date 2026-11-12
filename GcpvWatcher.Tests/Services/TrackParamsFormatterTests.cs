@@ -121,4 +121,61 @@ public class RaceDataConverterTests
         Assert.Equal((decimal)expectedLaps, races[0].NumberOfLaps);
         Assert.Equal(raceNumber, races[0].RaceNumber);
     }
+
+    [Fact]
+    public void ConvertGcpvRacesToRaces_WhenForcedTrackIsNotAHalfLap_KeepsThatLapCountAndWarns()
+    {
+        var config = new AppConfig { ForcedTrackLength = ForcedTrackLength.Meters111 };
+        var gcpvRace = new GcpvRaceData(
+            "12A",
+            "400 100M",
+            "Age 13",
+            "Final",
+            [new GcpvRacerData("1", "123 SKATER, JANE", "Toronto")]);
+
+        var race = new RaceDataConverter(config).ConvertGcpvRacesToRaces([gcpvRace]).Single();
+
+        Assert.Equal(3.6m, race.NumberOfLaps);
+        Assert.Contains("3.60", race.TrackWarning);
+        Assert.Contains("not a whole or half lap", race.TrackWarning);
+        Assert.DoesNotContain("100 m track.", race.TrackWarning);
+        Assert.True(race.HasTrackWarning);
+    }
+
+    [Fact]
+    public void ConvertGcpvRacesToRaces_WhenForced111AndDistanceIsUnmarked_UsesNineLapsFor1000()
+    {
+        var config = new AppConfig { ForcedTrackLength = ForcedTrackLength.Meters111 };
+        var gcpvRace = new GcpvRaceData(
+            "3A",
+            "1000",
+            "Open Men",
+            "Final",
+            [new GcpvRacerData("1", "123 SKATER, JANE", "Toronto")]);
+
+        var race = new RaceDataConverter(config).ConvertGcpvRacesToRaces([gcpvRace]).Single();
+
+        Assert.Equal(9.0m, race.NumberOfLaps);
+        Assert.Null(race.TrackWarning);
+        Assert.Null(race.TrackCaution);
+    }
+
+    [Fact]
+    public void ConvertGcpvRacesToRaces_WhenForcedTrackDiffersFromTheFile_SetsACaution()
+    {
+        var config = new AppConfig { ForcedTrackLength = ForcedTrackLength.Meters111 };
+        var gcpvRace = new GcpvRaceData(
+            "3A",
+            "1000 100M",
+            "Open Men",
+            "Final",
+            [new GcpvRacerData("1", "123 SKATER, JANE", "Toronto")]);
+
+        var race = new RaceDataConverter(config).ConvertGcpvRacesToRaces([gcpvRace]).Single();
+
+        Assert.Equal(9.0m, race.NumberOfLaps);
+        Assert.Null(race.TrackWarning);
+        Assert.Equal("File says 100 m. Using 9 laps on the 111 m track.", race.TrackCaution);
+        Assert.True(race.HasTrackCaution);
+    }
 }

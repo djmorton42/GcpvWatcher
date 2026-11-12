@@ -546,11 +546,22 @@ public class EvtFileManager : IDisposable
                 RaceNumber = newRaceNumber,
                 Racers = newRacers,
                 RacerNames = newNames,
-                IsConsolidated = true
+                IsConsolidated = true,
+                TrackWarning = CombineTrackWarnings(last.TrackWarning, race.TrackWarning),
+                TrackCaution = CombineTrackWarnings(last.TrackCaution, race.TrackCaution)
             };
         }
 
         return result;
+    }
+
+    private static string? CombineTrackWarnings(string? first, string? second)
+    {
+        if (string.IsNullOrEmpty(first))
+            return second;
+        if (string.IsNullOrEmpty(second))
+            return first;
+        return $"{first} {second}";
     }
 
     private void CreateBackupIfEvtFileExists()

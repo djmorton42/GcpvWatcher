@@ -15,6 +15,23 @@ public record Race(string RaceNumber, string RaceTitle, decimal NumberOfLaps, Di
     /// </summary>
     public bool IsConsolidated { get; init; } = false;
 
+    /// <summary>
+    /// Set when a forced track length does not produce a whole or half lap.
+    /// Shown on the race list. Not written to Lynx.evt.
+    /// </summary>
+    public string? TrackWarning { get; init; }
+
+    public bool HasTrackWarning => !string.IsNullOrEmpty(TrackWarning);
+
+    /// <summary>
+    /// Set when a forced track length disagrees with the track named in the file,
+    /// and the forced lap count is still a whole or half lap.
+    /// Shown on the race list, milder than <see cref="TrackWarning"/>. Not written to Lynx.evt.
+    /// </summary>
+    public string? TrackCaution { get; init; }
+
+    public bool HasTrackCaution => !string.IsNullOrEmpty(TrackCaution);
+
     public override string ToString()
     {
         var racersString = string.Join(", ", Racers.OrderBy(kvp => kvp.Value).Select(kvp => $"Racer {kvp.Key} in Lane {kvp.Value}"));

@@ -31,6 +31,13 @@ public class AppConfig
     /// </summary>
     [JsonIgnore]
     public bool ConsolidateSingleRacerRaces { get; set; }
+
+    /// <summary>
+    /// When not <see cref="ForcedTrackLength.Auto"/>, every race uses this track length.
+    /// Set at runtime from user preferences; not loaded from appconfig.json.
+    /// </summary>
+    [JsonIgnore]
+    public ForcedTrackLength ForcedTrackLength { get; set; }
 }
 
 public class AppConfigDto

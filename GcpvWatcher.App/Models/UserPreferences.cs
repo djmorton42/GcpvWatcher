@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GcpvWatcher.App.Services;
 
 namespace GcpvWatcher.App.Models;
@@ -8,6 +9,9 @@ public class UserPreferences
     public string WatchDirectory { get; set; } = string.Empty;
     public string FinishLynxDirectory { get; set; } = string.Empty;
     public bool ConsolidateSingleRacerRaces { get; set; }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ForcedTrackLength ForcedTrackLength { get; set; } = ForcedTrackLength.Auto;
 
     public static UserPreferences Load()
     {

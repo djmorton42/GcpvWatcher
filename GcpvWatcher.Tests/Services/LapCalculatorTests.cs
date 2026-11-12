@@ -1,3 +1,4 @@
+using GcpvWatcher.App.Models;
 using GcpvWatcher.App.Services;
 using Xunit;
 
@@ -102,6 +103,61 @@ public class LapCalculatorTests
     public void CalculateLaps_WhenStatedTrackIsNotWholeOrHalf_UsesTheOtherTrack(string raceParams, double expected)
     {
         Assert.Equal(expected, LapCalculator.CalculateLaps(raceParams));
+    }
+
+    [Theory]
+    [InlineData("1000", ForcedTrackLength.Auto, 10.0, null)]
+    [InlineData("1000", ForcedTrackLength.Meters100, 10.0, null)]
+    [InlineData("1000", ForcedTrackLength.Meters111, 9.0, null)]
+    [InlineData("1500", ForcedTrackLength.Meters111, 13.5, null)]
+    [InlineData("1000 100M", ForcedTrackLength.Meters111, 9.0, null)]
+    [InlineData("1000 111M", ForcedTrackLength.Meters100, 10.0, null)]
+    [InlineData("400", ForcedTrackLength.Meters111, 3.6, "3.60")]
+    [InlineData("400 100M", ForcedTrackLength.Meters111, 3.6, "3.60")]
+    [InlineData("400 111M", ForcedTrackLength.Meters111, 3.6, "3.60")]
+    [InlineData("777", ForcedTrackLength.Meters100, 7.77, "7.77")]
+    [InlineData("600 111M", ForcedTrackLength.Auto, 6.0, null)]
+    public void ResolveLaps_WithForcedTrack_UsesThatLengthForEveryRace(
+        string raceParams,
+        ForcedTrackLength forcedTrack,
+        double expectedLaps,
+        string? expectedWarningFragment)
+    {
+        var result = LapCalculator.ResolveLaps(raceParams, forcedTrack);
+
+        Assert.Equal(expectedLaps, result.Laps);
+        if (expectedWarningFragment is null)
+            Assert.Null(result.Warning);
+        else
+            Assert.Contains(expectedWarningFragment, result.Warning);
+    }
+
+    [Theory]
+    [InlineData("1000 100M", ForcedTrackLength.Meters111, "File says 100 m. Using 9 laps on the 111 m track.")]
+    [InlineData("1000 111M", ForcedTrackLength.Meters100, "File says 111 m. Using 10 laps on the 100 m track.")]
+    [InlineData("500 No Pts 100M", ForcedTrackLength.Meters111, "File says 100 m. Using 4.5 laps on the 111 m track.")]
+    public void ResolveLaps_WhenForcedTrackDiffersFromTheFile_SetsACaution(
+        string raceParams,
+        ForcedTrackLength forcedTrack,
+        string expectedCaution)
+    {
+        var result = LapCalculator.ResolveLaps(raceParams, forcedTrack);
+
+        Assert.Null(result.Warning);
+        Assert.Equal(expectedCaution, result.Caution);
+    }
+
+    [Theory]
+    [InlineData("1000", ForcedTrackLength.Meters111)]
+    [InlineData("1000 111M", ForcedTrackLength.Meters111)]
+    [InlineData("400 100M", ForcedTrackLength.Meters111)]
+    public void ResolveLaps_WhenTheFileAgreesOrTheCountIsInvalid_DoesNotSetACaution(
+        string raceParams,
+        ForcedTrackLength forcedTrack)
+    {
+        var result = LapCalculator.ResolveLaps(raceParams, forcedTrack);
+
+        Assert.Null(result.Caution);
     }
 
     [Fact]
